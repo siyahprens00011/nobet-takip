@@ -1637,6 +1637,105 @@ otomasyonIcinDisaAktar = function() {
 // Sayfa açıldığında başlat
 setTimeout(cloudBaslangicKontrol, 400);
 
+// ==========================================
+// BULUTTAKİ OTOMASYON ÇİZELGELERİ YÖNETİMİ
+// ==========================================
+async function cloudOtomasyonModalAc(){
+  const modal = document.getElementById('cloudOtomasyonModal');
+  if(!modal) return alert('Modal bulunamadı.');
+  modal.classList.remove('hidden');
+  await cloudOtomasyonListesiYukle();
+}
+
+async function cloudOtomasyonListesiYukle(){
+  const div = document.getElementById('cloudOtomasyonListesi');
+  if(!div) return;
+  div.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;">Çizelgeler taranıyor...</div>';
+  
+  const token = getCloudToken();
+  if(!token){
+    div.innerHTML = '<div style="padding:20px; text-align:center; color:#ef4444;">Bulut girişi yapılmamış. Lütfen önce sağ üstteki Ayarlar\'dan Token giriniz.</div>';
+    return;
+  }
+  
+  try {
+    const files = await githubApi('contents/otomasyon');
+    if(!files || files.length === 0){
+      div.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">Bulutta kayıtlı otomasyon çizelgesi bulunmuyor.<br><span style="font-size:11px;">"Hesapla" -> "Otomasyon Dosyasını İndir" dediğinizde otomatik buraya yüklenir.</span></div>';
+      return;
+    }
+    
+    let html = '';
+    for(const f of files){
+      if(!f.name.endsWith('.json')) continue;
+      
+      try {
+        const fileData = await githubApi(`contents/${f.path}`);
+        if(fileData && fileData.content){
+          const parsed = JSON.parse(b64DecodeUnicode(fileData.content.replace(/\n/g, '')));
+          const per = parsed.personel || f.name.replace('.json', '').replace('_cizelge', '');
+          const dt = parsed.tarih ? new Date(parsed.tarih).toLocaleString('tr-TR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'Bilinmiyor';
+          const vakaSayisi = parsed.cizelge ? parsed.cizelge.length : (Array.isArray(parsed) ? parsed.length : 0);
+          
+          html += `
+            <div style="background:var(--panel2); border:1px solid var(--border-strong); border-radius:6px; padding:10px 14px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-weight:bold; font-size:13px; color:var(--navy);">⚡ ${esc(per)}</div>
+                <div style="font-size:11px; color:#64748b; margin-top:2px;">
+                  Dosya: <code>${esc(f.name)}</code> · <b>${vakaSayisi} Vaka</b> · Gönderim: <b>${dt}</b>
+                </div>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button class="secondary" style="font-size:11px; padding:4px 8px;" onclick="cloudCizelgeIndir('${esc(f.path)}', '${esc(f.name)}')">⬇️ İndir</button>
+                <button class="danger" style="font-size:11px; padding:4px 8px;" onclick="cloudCizelgeSil('${esc(f.path)}', '${f.sha}')">🗑️ Sil</button>
+              </div>
+            </div>
+          `;
+        }
+      } catch(err) {
+        console.error('Dosya okunamadi:', f.name, err);
+      }
+    }
+    
+    div.innerHTML = html || '<div style="padding:15px; text-align:center; color:#64748b;">Otomasyon çizelgesi bulunamadı.</div>';
+  } catch(e) {
+    div.innerHTML = `<div style="color:#ef4444; padding:15px;">Çizelgeler taranırken hata: ${esc(e.message)}</div>`;
+  }
+}
+
+async function cloudCizelgeSil(path, sha){
+  if(!confirm(`"${path}" çizelgesini buluttan kalıcı olarak silmek istediğinizden emin misiniz?`)) return;
+  
+  try {
+    await githubApi(path, 'DELETE', {
+      message: `Otomasyon çizelgesi silindi: ${path}`,
+      sha: sha
+    });
+    showToast('Çizelge buluttan silindi! 🗑️');
+    await cloudOtomasyonListesiYukle();
+  } catch(e) {
+    alert('Silinemedi: ' + e.message);
+  }
+}
+
+async function cloudCizelgeIndir(path, filename){
+  try {
+    const fileData = await githubApi(`contents/${path}`);
+    if(!fileData || !fileData.content) return alert('Dosya boş.');
+    const jsonStr = b64DecodeUnicode(fileData.content.replace(/\n/g, ''));
+    
+    const a = document.createElement('a');
+    a.href = "data:application/json;charset=utf-8," + encodeURIComponent(jsonStr);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch(e) {
+    alert('İndirilemedi: ' + e.message);
+  }
+}
+
+
 </script>
 
 <!-- PERSONEL SEÇİM MODALI -->
