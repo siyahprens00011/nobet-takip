@@ -1247,11 +1247,10 @@ function updateActivePersonelBadge(){
   if(b) b.textContent = curName || 'Personel Seçilmedi';
 }
 
-async function githubApi(endpoint, method = 'GET', body = null){
+async function githubApi(endpoint, method = 'GET', body = null, retryCount = 0){
   const token = getCloudToken();
   if(!token) throw new Error('GitHub Token bulunamadı. Lütfen Ayarlar kısmından token girin.');
   
-  // endpoint başında contents/ yoksa ve özel api değilse contents/ ekle
   let cleanEndpoint = endpoint.replace(/^\/+/, '');
   
   const headers = {
@@ -1268,6 +1267,18 @@ async function githubApi(endpoint, method = 'GET', body = null){
   const url = `https://api.github.com/repos/${CLOUD_CONFIG.owner}/${CLOUD_CONFIG.repo}/${cleanEndpoint}`;
   const res = await fetch(url, opt);
   if(res.status === 404 && method === 'GET') return null;
+  
+  // 409 Conflict Retry (Aynı anda birden fazla cihaz kaydederse sha yenileyip tekrar dene)
+  if(res.status === 409 && method === 'PUT' && retryCount < 2){
+    console.warn('409 Çakışması algılandı, sha yenilenip tekrar deneniyor...');
+    await new Promise(r => setTimeout(r, 600));
+    const curFile = await githubApi(endpoint, 'GET');
+    if(curFile && curFile.sha && body){
+      body.sha = curFile.sha;
+      return await githubApi(endpoint, method, body, retryCount + 1);
+    }
+  }
+  
   if(!res.ok){
     const err = await res.json().catch(()=>({}));
     throw new Error(err.message || `GitHub Hatası: ${res.status}`);
@@ -1437,6 +1448,26 @@ async function cloudBulutaKaydetManuel(){
   const perAdi = document.getElementById('personelAdi').value.trim();
   if(!perAdi) return alert('Lütfen önce bir personel adı girin veya Personel Seçin.');
   
+  // Çakışma kontrolü: Bulutta telefondan girilmiş daha yeni bir kayıt var mı?
+  try {
+    const id = localStorage.getItem('nobet_aktif_personel_id') || personelToSlug(perAdi);
+    const manifest = await cloudManifestAl();
+    const hedef = manifest.find(m => m.id === id);
+    const yerelSon = localStorage.getItem('nobet_son_sync_tarih');
+    
+    if (hedef && hedef.sonGuncelleme && yerelSon) {
+      const bulutZaman = new Date(hedef.sonGuncelleme).getTime();
+      const yerelZaman = new Date(yerelSon).getTime();
+      if (bulutZaman > yerelZaman + 30000) {
+        const dtBulut = new Date(hedef.sonGuncelleme).toLocaleString('tr-TR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+        const onay = confirm(`⚠️ DİKKAT: Telefondan veya başka bir bilgisayardan daha yeni bir yedek kaydedilmiş!\n\n📅 Buluttaki Kayıt Zamanı: ${dtBulut}\n\nBu cihazdaki verileri kaydederseniz buluttaki yeni kayıtların üzerine yazılacaktır!\n\nYine de üzerine yazmak istiyor musunuz?\n(İptal derseniz önce 'Buluttan Çek' butonuna basarak en güncel veriyi alabilirsiniz.)`);
+        if (!onay) return;
+      }
+    }
+  } catch(e) {
+    console.warn('Çakışma kontrolü atlandı:', e);
+  }
+
   setCloudStatus('syncing', 'Buluta Kaydediliyor...');
   try {
     const id = localStorage.getItem('nobet_aktif_personel_id') || personelToSlug(perAdi);
