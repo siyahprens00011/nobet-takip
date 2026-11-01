@@ -1466,15 +1466,36 @@ async function cloudBuluttanCekAktif(){
 // Otomasyon verisini buluta gönder
 async function cloudOtomasyonVerisiYukle(cizelge){
   try {
+    const perAdi = document.getElementById('personelAdi') ? document.getElementById('personelAdi').value.trim() : '';
+    const id = localStorage.getItem('nobet_aktif_personel_id') || (perAdi ? personelToSlug(perAdi) : 'genel');
+    const nowIso = new Date().toISOString();
+    
+    const paket = {
+      personel: perAdi,
+      personelId: id,
+      tarih: nowIso,
+      cizelge: cizelge
+    };
+    
     const cur = await githubApi('contents/otomasyon/son_cizelge.json');
     const sha = cur ? cur.sha : null;
     const body = {
-      message: 'Otomasyon için yeni çizelge',
-      content: b64EncodeUnicode(JSON.stringify(cizelge, null, 2))
+      message: `${perAdi} otomasyon çizelgesi (${nowIso})`,
+      content: b64EncodeUnicode(JSON.stringify(paket, null, 2))
     };
     if(sha) body.sha = sha;
     await githubApi('contents/otomasyon/son_cizelge.json', 'PUT', body);
-    showToast('Otomasyon verisi buluta da aktarıldı! 🤖');
+    
+    const curPer = await githubApi(`contents/otomasyon/${id}_cizelge.json`);
+    const shaPer = curPer ? curPer.sha : null;
+    const bodyPer = {
+      message: `${perAdi} özel çizelgesi (${nowIso})`,
+      content: b64EncodeUnicode(JSON.stringify(paket, null, 2))
+    };
+    if(shaPer) bodyPer.sha = shaPer;
+    await githubApi(`contents/otomasyon/${id}_cizelge.json`, 'PUT', bodyPer);
+
+    showToast('Otomasyon çizelgesi buluta aktarıldı! 🤖');
   } catch(e) {
     console.error('Otomasyon verisi buluta aktarılamadı:', e);
   }
