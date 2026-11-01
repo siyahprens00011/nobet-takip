@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nöbet İzin">
+<meta name="theme-color" content="#1d3557">
+<title>Nöbet İzin Takip & ATK Saat Dilimleyici</title>
+<style>
+  :root{
+    --bg:#eef1f5; --panel:#ffffff; --panel2:#f6f7f9; --border:#d7dce3; --border-strong:#c1c9d3;
+    --text:#1f2937; --text2:#6b7280;
+    --navy:#1d3557; --navy-h:#264875;
+    --ok-b:#15803d; --ok-bg:#f0fdf4;
+    --soon-b:#b45309; --soon-bg:#fffbeb;
+    --bad-b:#b91c1c; --bad-bg:#fef2f2;
+    --wait-b:#0284c7; --wait-bg:#f0f9ff;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--text); font-family:Arial,"Segoe UI",sans-serif; margin:0; padding:20px;}
+  .wrap{max-width:1120px; margin:0 auto;}
+  .titlebar{display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid var(--navy); padding-bottom:10px; margin-bottom:16px;}
+  h1{font-size:19px; font-weight:700; margin:0; color:var(--navy);}
+  .clock{color:var(--text2); font-size:12px; font-family:"Consolas",monospace;}
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:4px; padding:16px; margin-bottom:16px;}
+  .panel h2{font-size:13px; font-weight:700; margin:0 0 12px; color:var(--navy); text-transform:uppercase; border-bottom:1px solid var(--border); padding-bottom:8px;}
+  .summary{display:flex; gap:12px; margin-bottom:16px;}
+  .summary .box{flex:1; background:var(--panel); border:1px solid var(--border); border-left:4px solid var(--navy); border-radius:4px; padding:12px 14px;}
+  .summary .box .lbl{font-size:11px; color:var(--text2); text-transform:uppercase;}
+  .summary .box .val{font-size:22px; font-weight:700; margin-top:4px; color:var(--navy);}
+  label{display:block; font-size:12px; color:var(--text2); margin-bottom:4px; font-weight:600;}
+  input,select,textarea{width:100%; background:var(--panel2); border:1px solid var(--border-strong); color:var(--text); border-radius:3px; padding:7px 9px; font-size:13px; margin-bottom:10px; font-family:inherit;}
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--navy);}
+  input:disabled,textarea:disabled{background:#eceff2; color:var(--text2);}
+  .row{display:flex; gap:10px;}
+  .row > div{flex:1;}
+  button{background:var(--navy); color:#fff; border:none; border-radius:3px; padding:8px 14px; font-size:13px; cursor:pointer; font-weight:600;}
+  button:hover{background:var(--navy-h);}
+  button.secondary{background:#fff; border:1px solid var(--border-strong); color:var(--text);}
+  button.secondary:hover{background:var(--panel2);}
+  button.danger{background:var(--bad-b);}
+  button.danger:hover{background:#8f1616;}
+  button.success{background:var(--wait-b);}
+  button.success:hover{background:#026aa1;}
+  .checkrow{display:flex; align-items:center; gap:6px; margin-bottom:12px; cursor:pointer; font-size:13px;}
+  .checkrow input{width:auto; margin:0;}
+  .grid2{display:grid; grid-template-columns:1.2fr 1fr; gap:16px; align-items:start;}
+  @media (max-width:800px){ .grid2{grid-template-columns:1fr;} }
+  .list{display:flex; flex-direction:column; gap:0;}
+  .item{display:flex; align-items:center; gap:10px; padding:9px 12px; border-bottom:1px solid var(--border); border-left:4px solid var(--border);}
+  .item:first-child{border-top:1px solid var(--border);}
+  .item.ok{border-left-color:var(--ok-b); background:var(--ok-bg);}
+  .item.soon{border-left-color:var(--soon-b); background:var(--soon-bg);}
+  .item.bad{border-left-color:var(--bad-b); background:var(--bad-bg);}
+  .item.wait{border-left-color:var(--wait-b); background:var(--wait-bg);}
+  .item .info{flex:1; font-size:13px;}
+  .item .info b{font-size:13px; color:var(--text);}
+  .item .meta{color:var(--text2); font-size:11px; margin-top:2px;}
+  .item .badge{display:inline-block; padding:2px 6px; border-radius:3px; font-size:10px; font-weight:bold; margin-left:6px; text-transform:uppercase;}
+  .item.wait .badge{background:var(--wait-b); color:#fff;}
+  .item .saat{font-weight:700; font-size:13px; min-width:80px; text-align:right;}
+  .item .del{background:none; border:none; color:var(--bad-b); font-size:16px; cursor:pointer; padding:2px 6px; line-height:1;}
+  .item .del:hover{transform:scale(1.2);}
+  .empty{color:var(--text2); font-size:13px; padding:10px 2px;}
+  .listhead{display:flex; justify-content:space-between; align-items:center; margin-bottom:0;}
+  .listhead h2{border-bottom:none; margin:0; padding:0;}
+  .result{margin-top:14px; border-top:1px solid var(--border); padding-top:14px;}
+  .warn{background:var(--soon-bg); border:1px solid var(--soon-b); color:var(--soon-t); border-radius:4px; padding:10px 12px; font-size:13px; margin-bottom:10px;}
+  .warn .btns{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .toplam{font-size:14px; font-weight:700; margin:10px 0; color:var(--navy);}
+  
+  .modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:99;}
+  .modal{background:var(--panel); border:1px solid var(--border); border-radius:4px; padding:20px; max-width:600px; width:90%; max-height:90vh; overflow-y:auto;}
+  .modal h3{margin-top:0; color:var(--navy); border-bottom:1px solid var(--border); padding-bottom:10px;}
+  .modal p{font-size:13px; margin:0 0 16px; color:var(--text); line-height:1.5;}
+  .modal .btns{display:flex; gap:8px; justify-content:flex-end; margin-top:15px;}
+  .hidden{display:none;}
+  
+  .legend{display:flex; gap:14px; font-size:11px; color:var(--text2); margin:8px 2px 12px;}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .dot{width:8px; height:8px; border-radius:50%; display:inline-block;}
+
+  .atk-table{width:100%; border-collapse:collapse; margin-top:10px; font-size:12px;}
+  .atk-table th, .atk-table td{border:1px solid var(--border-strong); padding:6px 8px; text-align:left;}
+  .atk-table th{background:var(--panel2); color:var(--navy);}
+
+  .wait-list-item{border:1px solid var(--wait-b); background:var(--wait-bg); padding:10px; border-radius:4px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;}
+  .wait-list-item .w-info{font-size:13px; flex:1;}
+  .wait-list-item .w-btns{display:flex; gap:6px;}
+
+  .silinenler-panel { margin-top: 20px; border-top: 2px dashed var(--border); padding-top: 12px; }
+  .silinenler-panel summary { font-size: 13px; font-weight: 700; color: var(--text2); cursor: pointer; list-style: none; outline: none; display: flex; align-items: center; gap: 8px; }
+  .silinenler-panel summary::-webkit-details-marker { display: none; }
+  .silinenler-panel summary::before { content: '▶'; display: inline-block; font-size: 10px; transition: transform 0.2s; }
+  .silinenler-panel[open] summary::before { transform: rotate(90deg); }
+
+  #printArea{display:none;}
+  @media print {
+    @page { size: A4 portrait; margin: 10mm; }
+    html, body { margin: 0 !important; padding: 0 !important; width: auto !important; height: auto !important; background: #fff !important; }
+    body > *:not(#printArea) { display: none !important; }
+    #printArea, #printArea * { visibility: visible !important; }
+    #printArea { display: block !important; position: static !important; width: 100% !important; color: #000; font-family: Arial, sans-serif; }
+    .print-header{ text-align:center; font-size:15px; font-weight:bold; margin-bottom:12px; border-bottom:2px solid #000; padding-bottom:8px; text-transform:uppercase;}
+    .print-table{ width:100%; border-collapse:collapse; margin:0 0 12px 0; font-size:11px; }
+    .print-table th, .print-table td{ border:1px solid #000; padding:5px 6px; text-align:left; }
+    .print-table th{background:#f0f0f0;}
+    .print-signatures{ margin-top:30px; display:flex; justify-content:space-between; font-size:12px; }
+    .print-signatures div{width:40%;}
+  }
+
+  /* --- BULUT SENKRONİZASYON STILLERI --- */
+  .cloud-bar {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    color: #fff;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .cloud-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .cloud-status .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+    display: inline-block;
+  }
+  .cloud-status.offline .dot { background: #ef4444; box-shadow: none; }
+  .cloud-status.syncing .dot { background: #eab308; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%{opacity:1;} 50%{opacity:0.4;} 100%{opacity:1;} }
+  .cloud-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .cloud-actions button {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+  }
+  .badge-personel {
+    background: #334155;
+    color: #38bdf8;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+  }
+  .toast-msg {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #0f172a;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 6px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 9999;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    border-left: 4px solid #22c55e;
+  }
+  .toast-msg.error { border-left-color: #ef4444; }
+  .toast-msg.hidden { transform: translateY(100px); opacity: 0; pointer-events: none; }
+  .personel-card {
+    background: var(--panel2);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .personel-card:hover {
+    border-color: var(--navy);
+    background: #e2e8f0;
+    transform: translateY(-1px);
+  }
+  .personel-card.active {
+    border-left: 4px solid var(--ok-b);
+    background: var(--ok-bg);
+  }
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  
+  <!-- BULUT SENKRONİZASYON ÇUBUĞU -->
+  <div class="cloud-bar">
+    <div class="cloud-status" id="cloudStatusWrap">
+      <span class="dot" id="cloudDot"></span>
+      <span id="cloudStatusText">Bulut Bağlı</span>
+      <span class="badge-personel" id="cloudActivePersonel">Yükleniyor...</span>
+      <span style="font-size:11px; color:#94a3b8;" id="cloudLastSyncTime"></span>
+    </div>
+    <div class="cloud-actions">
+      <button class="secondary" style="background:#334155; color:#fff; border:none;" onclick="cloudPersonelModalAc()">👤 Personel Değiştir</button>
+      <button style="background:#16a34a; color:#fff;" onclick="cloudBulutaKaydetManuel()">☁️ Buluta Kaydet</button>
+      <button class="secondary" style="background:#0284c7; color:#fff; border:none;" onclick="cloudBuluttanCekAktif()">🔄 Buluttan Çek</button>
+      <button class="secondary" style="background:#475569; color:#fff; border:none;" onclick="cloudAyarModalAc()">⚙️ Ayarlar</button>
+    </div>
+  </div>
+
+  <div class="titlebar">
+    <h1>Nöbet İzin Takip & ATK Saat Dilimleyici</h1>
+    <div class="clock" id="clock"></div>
+  </div>
+
+  <div class="panel" style="display:flex; align-items:center; gap:10px; padding:10px 16px;">
+    <div id="klasorDurum" style="flex:1; font-size:13px;">Belge klasörü: kontrol edilmedi</div>
+    <button class="secondary" onclick="klasorKontrolBtn()">📁 Belgeleri Kontrol Et</button>
+    <button class="secondary" onclick="klasorDegistir()">Klasörü Değiştir</button>
+  </div>
+
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="panel" style="margin-bottom:0;">
+      <h2>Personel ve Şube Bilgileri</h2>
+      <div class="row">
+        <div>
+          <label>Talep Eden Personel Adı Soyadı</label>
+          <input id="personelAdi" placeholder="Örn: Sedat Karaoğlu" onchange="bilgiKaydet()">
+        </div>
+        <div>
+          <label>Çalışılan Şube / Birim</label>
+          <input id="personelSube" placeholder="Örn: Alanya Adli Tıp Şube Müdürlüğü" onchange="bilgiKaydet()">
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:5px;">
+        <button class="secondary" onclick="verileriYedekle()">💾 Sadece Verileri Yedekle</button>
+        <button class="secondary" onclick="document.getElementById('fileInput').click()">📂 Yedek Yükle</button>
+        <input type="file" id="fileInput" class="hidden" accept=".json" onchange="verileriYukle(event)">
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:0; display:flex; flex-direction:column;">
+      <h2>Kendime Notlar</h2>
+      <textarea id="kisiselNotlar" placeholder="Örn: 11/10/2026 tarihine kadarki nöbetleri girdim..." oninput="bilgiKaydet()" style="flex:1; resize:none; margin-bottom:0; min-height:80px;"></textarea>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="box">
+      <div class="lbl">Kullanılabilir Toplam Süre</div>
+      <div class="val" id="toplamSaat">0 saat</div>
+    </div>
+    <div class="box">
+      <div class="lbl">Onay Bekleyen Süre</div>
+      <div class="val" id="bekleyenSaat" style="color:var(--wait-b)">0 saat</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Vaka / Nöbet / Mesai Kaydı Ekle</h2>
+    <div class="row">
+      <div>
+        <label>Tür</label>
+        <select id="ekTur">
+          <option value="Otopsi">Otopsi (4 Sa)</option>
+          <option value="Ölü Muayenesi">Ölü Muayenesi (2 Sa)</option>
+          <option value="Fazla Mesai">Fazla Mesai</option>
+        </select>
+      </div>
+      <div id="sorusturmaAlan">
+        <label>Soruşturma No</label>
+        <input id="ekSorusturma" placeholder="2026/123">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Tarih</label>
+        <input type="date" id="ekTarih">
+      </div>
+      <div id="saatAlan">
+        <label id="ekSaatLbl">Saat (Otomatik)</label>
+        <input type="text" inputmode="decimal" id="ekSaat" value="4" disabled>
+      </div>
+    </div>
+    
+    <div class="row">
+      <div>
+        <label>Nöbet Başlama (İsteğe Bağlı)</label>
+        <input type="time" id="ekBaslama">
+      </div>
+      <div>
+        <label>Nöbet Bitiş (İsteğe Bağlı)</label>
+        <input type="time" id="ekBitis">
+      </div>
+      <div>
+        <label>Belge İsmi Seç (PDF)</label>
+        <button type="button" id="btnBelgeEkle" class="danger" style="width:100%" onclick="document.getElementById('ekBelgeInput').click()">Dosya Yok</button>
+        <input type="file" id="ekBelgeInput" class="hidden" accept=".pdf" onchange="belgeSecildi(this, 'btnBelgeEkle')">
+      </div>
+    </div>
+    
+    <div class="row hidden" id="fmSaatAlan">
+      <div>
+        <label>Mesai Başlangıç</label>
+        <input type="time" id="fmBas">
+      </div>
+      <div>
+        <label>Mesai Bitiş</label>
+        <input type="time" id="fmBit">
+      </div>
+    </div>
+
+    <label class="checkrow" id="mesaiIciAlan"><input type="checkbox" id="mesaiIci"> Mesai içi vaka (süreyi elle gir)</label>
+    <button onclick="kayitEkle()">Kayıt Ekle</button>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <div class="listhead">
+        <h2>Mevcut Kayıtlar</h2>
+        <button class="danger" onclick="gecmisleriSil()">Süresi Geçenleri Sil</button>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--ok-b)"></span>Müsait</span>
+        <span><span class="dot" style="background:var(--wait-b)"></span>Beklemede</span>
+        <span><span class="dot" style="background:var(--soon-b)"></span>Az Kaldı</span>
+        <span><span class="dot" style="background:var(--bad-b)"></span>Geçmiş</span>
+      </div>
+      <div class="list" id="liste"></div>
+
+      <details class="silinenler-panel">
+        <summary>Silinen / Kullanılmış Kayıtlar Geçmişi</summary>
+        <div style="display:flex; justify-content:flex-end; margin-top:10px; margin-bottom:10px;">
+          <button id="btnTumuSil" class="secondary" style="padding:4px 8px; font-size:11px; border-color:var(--bad-b); color:var(--bad-b);" onclick="silinenleriTemizle()">Tümünü Kalıcı Sil</button>
+        </div>
+        <div class="list" id="silinenlerListe"></div>
+      </details>
+    </div>
+
+    <div class="panel">
+      <h2>İzin Hesapla & ATK Çizelgesi Oluştur</h2>
+      
+      <div class="row">
+        <div>
+          <label>İzin Başlangıç Tarihi</label>
+          <input type="date" id="izinBaslangic" onchange="tarihtenSaatHesapla()">
+        </div>
+        <div>
+          <label>İzin Bitiş Tarihi</label>
+          <input type="date" id="izinBitis" onchange="tarihtenSaatHesapla()">
+        </div>
+      </div>
+
+      <label class="checkrow">
+        <input type="checkbox" id="saatlikIzinCheck" onchange="toggleSaatlikIzin()"> Saatlik / Yarım Gün İzin Kullan
+      </label>
+
+      <div class="row hidden" id="saatlikIzinAlani">
+        <div>
+          <label>İzin Başlangıç Saati</label>
+          <input type="time" id="izinBasSaat" value="14:00" onchange="tarihtenSaatHesapla()">
+        </div>
+        <div>
+          <label>İzin Bitiş Saati</label>
+          <input type="time" id="izinBitSaat" value="17:30" onchange="tarihtenSaatHesapla()">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>İstenen Toplam Saat</label>
+          <input type="number" id="istenenSaat" step="0.5" min="0" placeholder="Tarihten veya saatten otomatik hesaplanır">
+        </div>
+        <div>
+          <label>Birim Amiri İsim Soyisim</label>
+          <input id="amirAdi" placeholder="Onaylayacak amir">
+        </div>
+      </div>
+
+      <button onclick="hesaplaClick()">Saat Dilimle ve Hesapla</button>
+      <div class="result hidden" id="sonucAlan"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Pencereler -->
+<div class="modal-bg hidden" id="pdfModal">
+  <div class="modal">
+    <h3>İşlem Tamamlandı</h3>
+    <p>Belge yazdırıldı, PDF olarak alındı veya Otomasyon dosyası indirildi. Bu listede kullandığınız vakalara ne yapılsın?</p>
+    <div class="btns" style="justify-content: center; gap: 15px;">
+      <button class="secondary" onclick="pdfModalKarar('tut')">Listede Tut</button>
+      <button class="success" onclick="pdfModalKarar('bekle')">Onaya Gönderdim (Beklet)</button>
+      <button class="danger" onclick="pdfModalKarar('sil')">Listeden Sil</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="startupModal">
+  <div class="modal">
+    <h3>ATK Sisteminde Onay Bekleyen İzinleriniz</h3>
+    <p>Geçmişte "Onaya Gönderdim" diyerek beklemeye aldığınız kayıtlar var. Sisteme girip onaylanıp onaylanmadıklarını kontrol ettikten sonra durumlarını işaretleyiniz:</p>
+    <div id="startupList" style="max-height: 400px; overflow-y: auto; margin-bottom: 10px;"></div>
+    <div class="btns">
+      <button class="secondary" onclick="document.getElementById('startupModal').classList.add('hidden')">Sonra Hatırlat</button>
+    </div>
+  </div>
+</div>
+
+<div id="printArea">
+  <div class="print-header" id="printHeaderTitle">MESAİ DIŞI NÖBET İZNİ LİSTESİ VE ATK BAŞVURU ÇİZELGESİ</div>
+  <table class="print-table">
+    <thead>
+      <tr>
+        <th>İzin Tarihi / Saat Dilimi</th>
+        <th>Eşleşen Tür</th>
+        <th>Soruşturma No / Mesai Detayı</th>
+        <th>Vaka / Mesai Tarihi</th>
+        <th>Kullanılan Süre</th>
+      </tr>
+    </thead>
+    <tbody id="printTableBody"></tbody>
+  </table>
+  <div style="font-weight:bold; font-size:12px; margin-bottom:20px;" id="printToplamSaat"></div>
+
+  <div class="print-signatures">
+    <div>
+      <b>Talep Eden Personel</b><br>
+      <span id="printPersonelName"></span><br><br>
+      İmza: ..................<br>
+      Tarih: <span id="printTarih1"></span>
+    </div>
+    <div>
+      <b>Birim Amiri Onayı</b><br>
+      <span id="printAmirAdi"></span><br><br>
+      İmza: ..................<br>
+      Tarih: <span id="printTarih2"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+let kayitlar = [];
+let sonSecim = null;
+let finalSecilenler = [];
+let finalToplam = 0;
+let finalCizelge = [];
+let seciliBelgeAdi = null;
+
+function storageKey(){ return 'nobet_izin_kayitlar_v5'; }
+function settingsKey(){ return 'nobet_izin_ayarlar_v3'; }
+
+function formatSaat(ondalikSaat) {
+  const h = Math.floor(ondalikSaat);
+  const m = Math.round((ondalikSaat - h) * 60);
+  let res = [];
+  if (h > 0) res.push(h + ' saat');
+  if (m > 0) res.push(m + ' dakika');
+  return res.length > 0 ? res.join(' ') : '0 dakika';
+}
+
+function kayitlariDuzenle(liste){
+  return liste.map(k => ({
+    ...k,
+    sonKullanma: k.tarih ? sonKullanmaHesapla(k.tarih) : k.sonKullanma,
+    durum: k.durum || 'musait'
+  }));
+}
+
+function yukle(){
+  try{
+    const data = localStorage.getItem(storageKey());
+    kayitlar = data ? JSON.parse(data) : [];
+
+    if (Array.isArray(kayitlar)){
+      kayitlar = kayitlariDuzenle(kayitlar);
+      kaydet();
+    }
+
+    const settings = JSON.parse(localStorage.getItem(settingsKey()) || '{}');
+    if(settings.personel) document.getElementById('personelAdi').value = settings.personel;
+    if(settings.sube) document.getElementById('personelSube').value = settings.sube;
+    if(settings.notlar) document.getElementById('kisiselNotlar').value = settings.notlar;
+  }catch(e){
+    kayitlar = [];
+  }
+  render();
+  bekleyenleriKontrolEt();
+}
+
+function kaydet(){
+  try {
+    localStorage.setItem(storageKey(), JSON.stringify(kayitlar));
+  } catch(e) {
+    alert("KAYIT HATASI! Lütfen eski kayıtları 'Tümünü Kalıcı Sil' diyerek temizleyin.");
+  }
+}
+
+function bilgiKaydet(){
+  const settings = {
+    personel: document.getElementById('personelAdi').value.trim(),
+    sube: document.getElementById('personelSube').value.trim(),
+    notlar: document.getElementById('kisiselNotlar').value.trim()
+  };
+  localStorage.setItem(settingsKey(), JSON.stringify(settings));
+}
+
+document.getElementById('ekSorusturma').addEventListener('input', function(e) {
+  let val = e.target.value.replace(/[^\d/]/g, '');
+  if (/^\d{4}$/.test(val) && !val.includes('/')) val += '/';
+  e.target.value = val;
+});
+
+function bekleyenleriKontrolEt(){
+  const bekleyenler = kayitlar.filter(k => k.durum === 'beklemede');
+  if(bekleyenler.length > 0){
+    const modal = document.getElementById('startupModal');
+    const listeDiv = document.getElementById('startupList');
+    listeDiv.innerHTML = bekleyenler.map(k => `
+      <div class="wait-list-item" id="wait-item-${k.id}">
+        <div class="w-info"><b>${k.tur}</b> — ${k.sorusturma}<br><span style="color:#666;font-size:11px;">Tarih: ${k.tarih} · Süre: ${formatSaat(k.saat)}</span></div>
+        <div class="w-btns">
+          <button class="danger" style="background:var(--ok-b)" onclick="bekleyenKarar('${k.id}', 'onaylandi')">Onaylandı (Silinenlere Taşı)</button>
+          <button class="secondary" onclick="bekleyenKarar('${k.id}', 'iptal')">Vazgeçtim (Listeye Al)</button>
+        </div>
+      </div>
+    `).join('');
+    modal.classList.remove('hidden');
+  }
+}
+
+function bekleyenKarar(id, karar){
+  const idx = kayitlar.findIndex(k => k.id === id);
+  if(idx > -1) {
+    if(karar === 'onaylandi'){
+      kayitlar[idx].durum = 'silinmis';
+    } else if(karar === 'iptal'){
+      kayitlar[idx].durum = 'musait';
+    }
+  }
+  kaydet(); render();
+  document.getElementById(`wait-item-${id}`).style.display = 'none';
+  if(kayitlar.filter(k => k.durum === 'beklemede').length === 0){
+    document.getElementById('startupModal').classList.add('hidden');
+  }
+}
+
+function dosyaAdinaUygun(text){ return String(text || '').trim().replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''); }
+function yedekTarihSaatStr(){ const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}_${String(n.getHours()).padStart(2,'0')}-${String(n.getMinutes()).padStart(2,'0')}`; }
+
+function verileriYedekle(){
+  const set = { 
+    personel: document.getElementById('personelAdi').value.trim(), 
+    sube: document.getElementById('personelSube').value.trim(),
+    notlar: document.getElementById('kisiselNotlar').value.trim()
+  };
+  const pay = { versiyon: 3, yedeklemeTarihi: new Date().toISOString(), settings: set, kayitlar };
+  const a = document.createElement('a');
+  a.href = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pay, null, 2));
+  a.download = ['nobet_izin', dosyaAdinaUygun(set.personel), `yedek-${yedekTarihSaatStr()}`].filter(Boolean).join('_') + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function verileriYukle(event){
+  const fr = new FileReader();
+  fr.onload = function(e) {
+    try {
+      const p = JSON.parse(e.target.result);
+      if(p && !Array.isArray(p) && Array.isArray(p.kayitlar)){
+        kayitlar = kayitlariDuzenle(p.kayitlar);
+        if(p.settings){
+          localStorage.setItem(settingsKey(), JSON.stringify(p.settings));
+          document.getElementById('personelAdi').value = p.settings.personel || '';
+          document.getElementById('personelSube').value = p.settings.sube || '';
+          document.getElementById('kisiselNotlar').value = p.settings.notlar || '';
+        }
+        kaydet(); render(); bekleyenleriKontrolEt(); alert('Yedek başarıyla yüklendi.'); return;
+      }
+      if(Array.isArray(p)){ 
+        kayitlar = kayitlariDuzenle(p); 
+        kaydet(); render(); bekleyenleriKontrolEt(); alert('Eski format yüklendi.'); return; 
+      }
+      alert('Geçersiz dosya.');
+    } catch(err) { alert('Dosya okuma hatası.'); }
+  };
+  fr.readAsText(event.target.files[0]);
+}
+
+function bugun(){ const d = new Date(); d.setHours(0,0,0,0); return d; }
+function tarihStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function tarihObj(tISO){ const [y,m,d] = String(tISO).split('-').map(Number); return new Date(y, m-1, d); }
+
+function haftaIciTarihListesi(basStr, bitStr){
+  const liste = [];
+  if (!basStr || !bitStr) return liste;
+  const d1 = tarihObj(basStr), d2 = tarihObj(bitStr);
+  if (d2 < d1) return liste;
+  const cur = new Date(d1);
+  while (cur <= d2){
+    if (cur.getDay() !== 0 && cur.getDay() !== 6) liste.push(tarihStr(cur));
+    cur.setDate(cur.getDate()+1);
+  }
+  return liste;
+}
+
+function sonKullanmaHesapla(tarihISO){
+  const t = tarihObj(tarihISO), y = t.getFullYear();
+  if (t < new Date(y, 7, 17)) return `${y}-12-31`;
+  return tarihStr(new Date(y, t.getMonth()+2, 0));
+}
+
+function durumHesapla(k){
+  if(k.durum === 'silinmis') return 'bad';
+  if(k.durum === 'beklemede') return 'wait';
+  const fark = Math.floor((new Date(k.sonKullanma+'T00:00:00') - bugun())/86400000);
+  if (fark < 0) return 'bad';
+  if (fark <= 7) return 'soon';
+  return 'ok';
+}
+
+function updateSaatField(){
+  const v = document.getElementById('ekTur').value;
+  const mi = document.getElementById('mesaiIci').checked;
+  const sor = document.getElementById('sorusturmaAlan'), sa = document.getElementById('saatAlan');
+  const fm = document.getElementById('fmSaatAlan'), miA = document.getElementById('mesaiIciAlan');
+  const inp = document.getElementById('ekSaat'), lbl = document.getElementById('ekSaatLbl');
+
+  if (v === 'Fazla Mesai') {
+    sor.classList.add('hidden'); sa.classList.add('hidden'); miA.classList.add('hidden'); fm.classList.remove('hidden');
+  } else {
+    sor.classList.remove('hidden'); sa.classList.remove('hidden'); miA.classList.remove('hidden'); fm.classList.add('hidden');
+    if (mi){ inp.value=''; inp.disabled=false; lbl.textContent='Saat (Elle gir)'; } 
+    else { inp.value = (v==='Otopsi') ? 4 : 2; inp.disabled=true; lbl.textContent='Saat (Otomatik)'; }
+  }
+}
+document.getElementById('ekTur').addEventListener('change', updateSaatField);
+document.getElementById('mesaiIci').addEventListener('change', updateSaatField);
+
+function belgeSecildi(input, btnId, kayitId = null) {
+  const file = input.files[0];
+  if(!file) return;
+  
+  if (file.type !== "application/pdf") return alert("Lütfen sadece PDF belgesi seçin!");
+  
+  const fileName = file.name;
+
+  if (kayitId) {
+    const k = kayitlar.find(x => x.id === kayitId);
+    if(k) { 
+      k.belgeAdi = fileName; 
+      kaydet(); 
+      render(); 
+    }
+  } else {
+    seciliBelgeAdi = fileName;
+    const btn = document.getElementById(btnId);
+    btn.textContent = fileName.length > 15 ? fileName.substring(0,12)+'...' : fileName;
+    btn.className = "success";
+  }
+  input.value = ''; 
+}
+
+function guncelleSaat(id, tur, deger) {
+  const k = kayitlar.find(x => x.id === id);
+  if(k) { k[tur] = deger; kaydet(); }
+}
+
+function toggleSaatlikIzin(){
+  const ck = document.getElementById('saatlikIzinCheck').checked;
+  const al = document.getElementById('saatlikIzinAlani');
+  if (ck) al.classList.remove('hidden'); else al.classList.add('hidden');
+  tarihtenSaatHesapla();
+}
+
+function calculateWorkingHours(sStr, eStr) {
+  const toMin = t => { if(!t) return 0; const [h, m] = t.split(':').map(Number); return h*60+m; };
+  const s = Math.max(toMin(sStr), 510), e = Math.min(toMin(eStr), 1050);
+  if (e <= s) return 0;
+  return (e - s) / 60;
+}
+
+function tarihtenSaatHesapla(){
+  const bas = document.getElementById('izinBaslangic').value, bit = document.getElementById('izinBitis').value;
+  const sl = document.getElementById('saatlikIzinCheck').checked;
+  if(!bas || !bit) return;
+  const d1 = tarihObj(bas), d2 = tarihObj(bit);
+  if(d2 < d1) return;
+  const isGun = haftaIciTarihListesi(bas, bit);
+  const gs = isGun.length;
+  
+  let top = 0;
+  if (sl) {
+    const bs = document.getElementById('izinBasSaat').value, bi = document.getElementById('izinBitSaat').value;
+    if (gs === 1) {
+      const g = isGun[0];
+      if (g === bas && g === bit) top = calculateWorkingHours(bs, bi);
+      else if (g === bas) top = calculateWorkingHours(bs, '17:30');
+      else if (g === bit) top = calculateWorkingHours('08:30', bi);
+      else top = 8;
+    } else if (gs > 1) {
+      const iG = isGun[0], sG = isGun[isGun.length-1];
+      const igS = (iG === bas) ? calculateWorkingHours(bs, '17:30') : 8;
+      const sgS = (sG === bit) ? calculateWorkingHours('08:30', bi) : 8;
+      top = igS + (Math.max(0, gs - 2) * 8) + sgS;
+    }
+    document.getElementById('istenenSaat').value = Number(top.toFixed(2));
+  } else {
+    document.getElementById('istenenSaat').value = gs * 8;
+  }
+}
+
+function kayitEkle(){
+  const tur = document.getElementById('ekTur').value;
+  let sor = document.getElementById('ekSorusturma').value.trim();
+  const tar = document.getElementById('ekTarih').value;
+  let saat = 0;
+  
+  const baslama = document.getElementById('ekBaslama').value;
+  const bitis = document.getElementById('ekBitis').value;
+
+  if (tur === 'Fazla Mesai') {
+    const fmb = document.getElementById('fmBas').value, fmbi = document.getElementById('fmBit').value;
+    if (!fmb || !fmbi) return alert('Lütfen mesai başlangıç ve bitiş saatlerini giriniz.');
+    let diff = (fmbi.split(':')[0]*60 + +fmbi.split(':')[1]) - (fmb.split(':')[0]*60 + +fmb.split(':')[1]);
+    if (diff < 0) diff += 24 * 60;
+    saat = diff / 60; sor = `${fmb} - ${fmbi} Saatleri Arası`; 
+  } else {
+    if (!sor) return alert('Soruşturma no giriniz.');
+    saat = parseFloat(document.getElementById('ekSaat').value.replace(',', '.'));
+  }
+
+  if (!tar) return alert('Tarih giriniz.');
+  if (!saat || saat<=0) return alert('Geçerli bir saat giriniz.');
+
+  kayitlar.push({
+    id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+    tur, sorusturma:sor, tarih:tar, saat,
+    baslama: baslama, bitis: bitis, belgeAdi: seciliBelgeAdi,
+    sonKullanma: sonKullanmaHesapla(tar), durum: 'musait'
+  });
+  kaydet();
+  
+  document.getElementById('ekSorusturma').value=''; 
+  document.getElementById('fmBas').value=''; 
+  document.getElementById('fmBit').value='';
+  document.getElementById('ekBaslama').value='';
+  document.getElementById('ekBitis').value='';
+  document.getElementById('mesaiIci').checked=false;
+  
+  seciliBelgeAdi = null;
+  const btnBelge = document.getElementById('btnBelgeEkle');
+  btnBelge.textContent = "Dosya Yok";
+  btnBelge.className = "danger";
+  
+  updateSaatField(); render();
+}
+
+function kayitSil(id){
+  const idx = kayitlar.findIndex(k => k.id === id);
+  if(idx > -1) {
+    kayitlar[idx].durum = 'silinmis';
+    kaydet(); render();
+  }
+}
+
+function geriAl(id) {
+  const idx = kayitlar.findIndex(k => k.id === id);
+  if(idx > -1) {
+    kayitlar[idx].durum = 'musait';
+    kaydet(); render();
+  }
+}
+
+function kaliciSil(id) {
+  if(confirm('Kayıt tamamen silinecek ve geri alınamayacak. Emin misiniz?')) {
+    kayitlar = kayitlar.filter(k => k.id !== id);
+    kaydet(); render();
+  }
+}
+
+function silinenleriTemizle() {
+  if(confirm('Silinen tüm kayıtlar kalıcı olarak temizlenecek. Bu işlem geri alınamaz. Emin misiniz?')) {
+    kayitlar = kayitlar.filter(k => k.durum !== 'silinmis');
+    kaydet(); render();
+  }
+}
+
+function gecmisleriSil(){
+  let changed = false;
+  kayitlar.forEach(k => {
+    if(k.durum !== 'beklemede' && k.durum !== 'silinmis' && durumHesapla(k) === 'bad') {
+      k.durum = 'silinmis';
+      changed = true;
+    }
+  });
+  if(changed) { kaydet(); render(); }
+}
+
+function render(){
+  const liste = document.getElementById('liste');
+  const silListe = document.getElementById('silinenlerListe');
+  liste.innerHTML=''; silListe.innerHTML='';
+
+  const aktifK = kayitlar.filter(k => k.durum !== 'silinmis');
+  const silinenK = kayitlar.filter(k => k.durum === 'silinmis');
+
+  if (aktifK.length===0){
+    liste.innerHTML = '<div class="empty">Kayıtlı vaka veya mesai bulunmuyor.</div>';
+  } else {
+    [...aktifK].sort((a,b)=>a.tarih.localeCompare(b.tarih)).forEach(k=>{
+      const css = durumHesapla(k);
+      const bdg = k.durum === 'beklemede' ? '<span class="badge">Beklemede</span>' : '';
+      const belgeCss = k.belgeAdi ? 'success' : 'danger';
+      const belgeT = k.belgeAdi ? 'Belge: ' + (k.belgeAdi.length > 10 ? k.belgeAdi.substring(0,8)+'...' : k.belgeAdi) : 'Belge Yok';
+
+      liste.innerHTML += `
+        <div class="item ${css}">
+          <div class="info"><b>${k.tur}</b> — ${k.sorusturma} ${bdg}
+            <div class="meta">Tarih: ${k.tarih} · SKT: ${k.sonKullanma}</div>
+            <div style="margin-top:6px; display:flex; gap:6px; align-items:center;">
+              <span style="font-size:10px; color:#666;">Saat:</span>
+              <input type="time" value="${k.baslama||''}" onchange="guncelleSaat('${k.id}','baslama',this.value)" style="width:75px; padding:2px; font-size:11px; margin:0;">
+              <span style="font-size:10px; color:#666;">-</span>
+              <input type="time" value="${k.bitis||''}" onchange="guncelleSaat('${k.id}','bitis',this.value)" style="width:75px; padding:2px; font-size:11px; margin:0;">
+              <button type="button" class="${belgeCss}" style="padding:4px 8px; font-size:10px; margin-left:auto;" onclick="document.getElementById('blg_${k.id}').click()">${belgeT}</button>
+              <input type="file" id="blg_${k.id}" class="hidden" accept=".pdf" onchange="belgeSecildi(this, '', '${k.id}')">
+            </div>
+          </div>
+          <div class="saat" style="margin-top:-25px;">${formatSaat(k.saat)}</div>
+          <button class="del" style="margin-top:-25px;" title="Silinenlere Taşı" onclick="kayitSil('${k.id}')">🗑️</button>
+        </div>
+      `;
+    });
+  }
+
+  if (silinenK.length === 0){
+    silListe.innerHTML = '<div class="empty">Silinmiş veya kullanılmış kayıt yok.</div>';
+    document.getElementById('btnTumuSil').classList.add('hidden');
+  } else {
+    document.getElementById('btnTumuSil').classList.remove('hidden');
+    [...silinenK].sort((a,b)=>b.tarih.localeCompare(a.tarih)).forEach(k=>{
+      silListe.innerHTML += `
+        <div class="item" style="background:#f9fafb; border-left-color:#9ca3af;">
+          <div class="info"><s style="color:#6b7280">${k.tur} — ${k.sorusturma}</s>
+            <div class="meta">Tarih: ${k.tarih}</div>
+          </div>
+          <div class="saat" style="color:#6b7280; text-decoration:line-through;">${formatSaat(k.saat)}</div>
+          <div style="display:flex; gap:5px; margin-left:10px;">
+              <button class="success" style="padding:4px 8px; font-size:11px;" onclick="geriAl('${k.id}')">Geri Al</button>
+              <button class="danger" style="padding:4px 8px; font-size:11px;" onclick="kaliciSil('${k.id}')">Sil</button>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  const musaitK = aktifK.filter(k => (!k.durum || k.durum === 'musait') && durumHesapla(k)!=='bad');
+  const bekleK = aktifK.filter(k => k.durum === 'beklemede');
+  
+  document.getElementById('toplamSaat').textContent = formatSaat(musaitK.reduce((s,k)=>s+k.saat,0));
+  document.getElementById('bekleyenSaat').textContent = formatSaat(bekleK.reduce((s,k)=>s+k.saat,0));
+}
+
+function altUstKombinasyon(hedefSaat){
+  const musait = kayitlar.filter(k => (!k.durum || k.durum === 'musait') && durumHesapla(k) !== 'bad');
+  const onc = musait.filter(k => k.tarih > '2026-08-16').sort((a,b) => a.tarih.localeCompare(b.tarih));
+  const dig = musait.filter(k => k.tarih <= '2026-08-16').sort((a,b) => a.tarih.localeCompare(b.tarih));
+  
+  const items = [...onc, ...dig].map(k=>({...k, s: Math.round(k.saat*2)}));
+  const hedefS = Math.round(hedefSaat*2);
+  const maxSum = items.reduce((a,b)=>a+b.s,0);
+
+  if (items.length===0) return {tip:'bos'};
+
+  const dp = new Array(maxSum+1).fill(null); 
+  dp[0] = { items: [], oncSum: 0 };
+  
+  for (let i=0; i<items.length; i++){
+    const s = items[i].s;
+    const weight = i < onc.length ? s : 0; 
+    
+    for (let sum=maxSum-s; sum>=0; sum--) {
+      if (dp[sum]!==null) {
+        const newOncSum = dp[sum].oncSum + weight;
+        if (dp[sum+s]===null || newOncSum > dp[sum+s].oncSum) {
+          dp[sum+s] = { items: dp[sum].items.concat(i), oncSum: newOncSum };
+        }
+      }
+    }
+  }
+
+  if (hedefS<=maxSum && dp[hedefS]!==null) {
+    return {tip:'tam', secilenler:dp[hedefS].items.map(i=>items[i]), toplam:hedefS/2};
+  }
+
+  let alt=-1, ust=-1;
+  for (let sum=Math.min(hedefS, maxSum); sum>=0; sum--) if (dp[sum]!==null){ alt=sum; break; }
+  for (let sum=hedefS; sum<=maxSum; sum++) if (dp[sum]!==null){ ust=sum; break; }
+
+  return { 
+    tip:'yakin', items, hedefS, alt, ust, 
+    altSecilenler: alt>=0 ? dp[alt].items.map(i=>items[i]) : null, 
+    ustSecilenler: ust>=0 ? dp[ust].items.map(i=>items[i]) : null 
+  };
+}
+
+function hesaplaClick(){
+  const h = parseFloat(document.getElementById('istenenSaat').value);
+  if (!h || h<=0) return alert('Lütfen geçerli bir saat giriniz.');
+  const s = altUstKombinasyon(h);
+  gosterSonuc(s, h);
+}
+
+function gosterSonuc(sonuc, hedef){
+  const al = document.getElementById('sonucAlan');
+  al.classList.remove('hidden');
+
+  if (sonuc.tip==='bos'){ al.innerHTML = `<div class="warn">Kullanılabilir uygun kayıt bulunamadı.</div>`; sonSecim = null; return; }
+  if (sonuc.tip==='tam') return finalizeGoster(sonuc.secilenler, sonuc.toplam);
+
+  const ek = sonuc.alt>=0 ? Math.round((sonuc.hedefS-sonuc.alt))/2 : null;
+  const fz = sonuc.ust>=0 ? Math.round((sonuc.ust-sonuc.hedefS))/2 : null;
+  const aT = sonuc.alt>=0 ? sonuc.alt/2 : null, uT = sonuc.ust>=0 ? sonuc.ust/2 : null;
+
+  sonSecim = sonuc;
+  let msj = 'İstediğiniz süreye tam ulaşılamadı. ';
+  if (fz!==null && ek!==null && sonuc.alt>0) msj += `${formatSaat(fz)} fazlasını mı yoksa ${formatSaat(ek)} eksiğini mi kullanmak istersiniz?`;
+  else if (fz!==null) msj += `${formatSaat(fz)} fazlasını kullanmak ister misiniz?`;
+  else if (ek!==null) msj += `${formatSaat(ek)} eksiğini kullanmak ister misiniz?`;
+
+  let b = '';
+  if (fz!==null) b += `<button onclick="finalizeGoster(sonSecim.ustSecilenler, sonSecim.ust/2)">+${formatSaat(fz)} (${formatSaat(uT)})</button>`;
+  if (ek!==null && sonuc.alt>0) b += `<button class="secondary" onclick="finalizeGoster(sonSecim.altSecilenler, sonSecim.alt/2)">-${formatSaat(ek)} (${formatSaat(aT)})</button>`;
+
+  al.innerHTML = `<div class="warn">${msj}<div class="btns">${b}</div></div>`;
+}
+
+function cizelgeOlustur(secilenler){
+  const bS = document.getElementById('izinBaslangic').value, biS = document.getElementById('izinBitis').value;
+  const sl = document.getElementById('saatlikIzinCheck').checked;
+  const bc = document.getElementById('izinBasSaat').value, bic = document.getElementById('izinBitSaat').value;
+  let tl = (bS && biS) ? haftaIciTarihListesi(bS, biS) : [];
+  if (tl.length === 0) tl.push(tarihStr(bugun()));
+
+  const tMin = t => { if(!t) return 0; const [h,m] = t.split(':').map(Number); return h * 60 + m; };
+
+  const gunler = tl.map((t, i) => {
+    let bas = 510, bit = 1050, pen = [];
+    if (sl){
+      bas = Math.max(tMin((i === 0 && t === bS) ? bc : "08:30"), 510);
+      bit = Math.min(tMin((i === tl.length - 1 && t === biS) ? bic : "17:30"), 1050);
+      if (bit > bas) pen = [[bas, bit]];
+    } else {
+      pen = [[510, 750], [810, 1050], [510, 1050]];
+    }
+    return { tarih:t, bas, bit, pen, kul:[] };
+  });
+
+  const bosBul = (g, need) => {
+    const kul = [...g.kul].sort((x, y) => x[0] - y[0]);
+    for (const [wS, wE] of g.pen){
+      let st = wS;
+      for (const [us, ue] of kul){
+        if (ue <= st) continue;
+        if (us >= st + need) break;
+        st = Math.max(st, ue);
+      }
+      if (st + need <= wE) return st;
+    }
+    return -1;
+  };
+
+  const sonuc = [];
+  const ekle = (g, st, harc, sec) => {
+    g.kul.push([st, st + harc]);
+    sonuc.push({ g: g.tarih, st, c: { izinTarihi: g.tarih, saatAraligi: `${dakikaToSaat(st)} - ${dakikaToSaat(st + harc)}`, harcanan: harc / 60, vaka: sec } });
+  };
+
+  const sirali = [...secilenler].sort((x, y) => (Number(y.saat) || 0) - (Number(x.saat) || 0));
+  for (const sec of sirali){
+    const need = Math.round((Number(sec.saat) || 0) * 60);
+    if (need <= 0) continue;
+    let yerlesti = false;
+    for (const g of gunler){
+      const st = bosBul(g, need);
+      if (st >= 0){ ekle(g, st, need, sec); yerlesti = true; break; }
+    }
+    if (!yerlesti){
+      let kal = need;
+      for (const g of gunler){
+        if (g.bit <= g.bas) continue;
+        const kul = [...g.kul].sort((x, y) => x[0] - y[0]);
+        const bosluk = []; let cur = g.bas;
+        for (const [us, ue] of kul){ if (us > cur) bosluk.push([cur, us]); cur = Math.max(cur, ue); }
+        if (g.bit > cur) bosluk.push([cur, g.bit]);
+        for (const [bs, be] of bosluk){
+          if (kal <= 0) break;
+          const h = Math.min(kal, be - bs);
+          ekle(g, bs, h, sec); kal -= h;
+        }
+        if (kal <= 0) break;
+      }
+    }
+  }
+
+  sonuc.sort((x, y) => x.g.localeCompare(y.g) || x.st - y.st);
+  return sonuc.map(r => r.c);
+}
+
+function dakikaToSaat(d){ const h = Math.floor(d / 60), m = d % 60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
+
+function otomasyonIcinDisaAktar() {
+  if (finalCizelge.length === 0) return alert('Lütfen önce hesaplama yapın.');
+  
+  for (const c of finalCizelge) {
+    if (!c.vaka.baslama || !c.vaka.bitis) {
+      return alert(`HATA: "${c.vaka.sorusturma}" numaralı kaydın nöbet başlangıç veya bitiş saati eksik! Lütfen listeden saatleri girip tekrar hesapla butonuna basın.`);
+    }
+    if (!c.vaka.belgeAdi) {
+      return alert(`HATA: "${c.vaka.sorusturma}" numaralı kaydın PDF belgesi seçilmemiş! Lütfen listeden kırmızı butona basarak belgeyi ekleyip tekrar hesaplayın.`);
+    }
+  }
+
+  const data = JSON.stringify(finalCizelge, null, 2);
+  const a = document.createElement('a');
+  a.href = "data:application/json;charset=utf-8," + encodeURIComponent(data);
+  a.download = "atk_otomasyon_verisi.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  
+  document.getElementById('pdfModal').classList.remove('hidden');
+}
+
+function finalizeGoster(secilenler, toplam){
+  finalSecilenler = secilenler; finalToplam = toplam; finalCizelge = cizelgeOlustur(secilenler);
+  let html = finalCizelge.map(c=>`<tr><td><b>${c.izinTarihi}</b> (${c.saatAraligi})</td><td>${c.vaka.tur}</td><td>${c.vaka.sorusturma}</td><td>${formatSaat(c.harcanan)}</td></tr>`).join('');
+  document.getElementById('sonucAlan').innerHTML = `
+    <div style="font-weight:bold; margin-bottom:6px; font-size:12px;">ATK Başvuru Giriş Çizelgesi:</div>
+    <table class="atk-table"><thead><tr><th>İzin Tarihi / Saat</th><th>Tür</th><th>Soruşturma No / Mesai Detayı</th><th>Süre</th></tr></thead><tbody>${html}</tbody></table>
+    <div class="toplam">Toplam Kullanılacak: ${formatSaat(toplam)}</div>
+    <div style="display:flex; gap:8px;">
+      <button onclick="yazdirVePDF()">Yazdır / PDF Olarak Kaydet</button>
+      <button class="success" onclick="otomasyonIcinDisaAktar()">🤖 Otomasyon Dosyasını İndir</button>
+    </div>
+  `;
+}
+
+function yazdirVePDF(){
+  if (finalSecilenler.length===0) return;
+  const amir = document.getElementById('amirAdi').value.trim();
+  if (!amir) return alert('Lütfen onaylayacak birim amir ismini giriniz.');
+  const sube = document.getElementById('personelSube').value.trim();
+  const bgStr = new Date().toLocaleDateString('tr-TR');
+  
+  document.getElementById('printTableBody').innerHTML = finalCizelge.map(c=>{
+    let vakaSaat = (c.vaka.baslama && c.vaka.bitis) ? ` <br><span style="font-size:10px">(${c.vaka.baslama} - ${c.vaka.bitis})</span>` : '';
+    return `<tr><td><b>${c.izinTarihi}</b> | ${c.saatAraligi}</td><td>${c.vaka.tur}</td><td>${c.vaka.sorusturma}</td><td>${c.vaka.tarih}${vakaSaat}</td><td>${formatSaat(c.harcanan)}</td></tr>`;
+  }).join('');
+  
+  document.getElementById('printHeaderTitle').textContent = (sube ? sube.toUpperCase() + ' ' : '') + 'MESAİ DIŞI NÖBET İZNİ LİSTESİ VE ATK BAŞVURU ÇİZELGESİ';
+  document.getElementById('printPersonelName').textContent = document.getElementById('personelAdi').value || '..........................';
+  document.getElementById('printToplamSaat').textContent = 'Toplam Kullanılan İzin Süresi: ' + formatSaat(finalToplam);
+  document.getElementById('printAmirAdi').textContent = amir;
+  document.getElementById('printTarih1').textContent = bgStr; document.getElementById('printTarih2').textContent = bgStr;
+
+  window.print();
+  document.getElementById('pdfModal').classList.remove('hidden');
+}
+
+function pdfModalKarar(karar){
+  document.getElementById('pdfModal').classList.add('hidden');
+  const secIdler = new Set(finalSecilenler.map(k=>k.id));
+
+  if (karar === 'sil'){
+    kayitlar.forEach(k => { if(secIdler.has(k.id)) k.durum = 'silinmis'; });
+  } else if (karar === 'bekle'){
+    kayitlar.forEach(k => { if(secIdler.has(k.id)) k.durum = 'beklemede'; });
+  }
+
+  kaydet(); render();
+  document.getElementById('sonucAlan').classList.add('hidden');
+  document.getElementById('istenenSaat').value='';
+  finalSecilenler=[]; finalToplam=0; sonSecim=null; finalCizelge=[];
+}
+
+function idbAc(){ return new Promise((res,rej)=>{ const r = indexedDB.open('nobetBelgeDB',1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbGet(key){ const db = await idbAc(); return new Promise((res,rej)=>{ const q = db.transaction('kv').objectStore('kv').get(key); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+async function idbSet(key,val){ const db = await idbAc(); return new Promise((res,rej)=>{ const tx = db.transaction('kv','readwrite'); tx.objectStore('kv').put(val,key); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
+
+function klasorDurumYaz(t){ document.getElementById('klasorDurum').textContent = 'Belge klasörü: ' + t; }
+
+async function belgeleriKontrolEt(izinIste){
+  if (!window.showDirectoryPicker){ klasorDurumYaz('Bu tarayıcı desteklemiyor (Chrome veya Edge kullanın)'); return; }
+  try {
+    let h = null;
+    try { h = await idbGet('klasor'); } catch(e){}
+    if (!h){ klasorDurumYaz('seçilmedi — "Klasörü Değiştir" ile seçin'); return; }
+    let p = await h.queryPermission({mode:'read'});
+    if (p !== 'granted' && izinIste) p = await h.requestPermission({mode:'read'});
+    if (p !== 'granted'){ klasorDurumYaz(h.name + ' — izin için "Belgeleri Kontrol Et" butonuna basın'); return; }
+    let yok = 0;
+    for (const k of kayitlar){
+      if (!k.belgeAdi || k.durum === 'silinmis') continue;
+      try { await h.getFileHandle(k.belgeAdi); }
+      catch(e){ if (e.name === 'NotFoundError'){ k.belgeAdi = null; yok++; } }
+    }
+    if (yok){ kaydet(); render(); }
+    klasorDurumYaz(h.name + ' — kontrol edildi' + (yok ? ', ' + yok + ' belge bulunamadı' : ''));
+  } catch(e){ klasorDurumYaz('kontrol edilemedi'); }
+}
+
+async function klasorKontrolBtn(){
+  let h = null;
+  try { h = await idbGet('klasor'); } catch(e){}
+  if (!h) return klasorDegistir();
+  belgeleriKontrolEt(true);
+}
+
+async function klasorDegistir(){
+  try {
+    const h = await window.showDirectoryPicker({mode:'read'});
+    await idbSet('klasor', h);
+    await belgeleriKontrolEt(false);
+  } catch(e){}
+}
+
+setInterval(() => {
+  const n = new Date();
+  document.getElementById('clock').textContent = n.toLocaleDateString('tr-TR')+' '+n.toLocaleTimeString('tr-TR');
+}, 1000);
+
+updateSaatField();
+yukle();
+belgeleriKontrolEt(false);
+
+// ==========================================
+// BULUT SENKRONİZASYON SİSTEMİ (GITHUB E2EE)
+// ==========================================
+
+// URL'den tek tıkla token kurulumu (İlk girişte kolaylık için)
+(function checkUrlToken(){
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    if(urlToken){
+      localStorage.setItem('nobet_gh_token', urlToken);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  } catch(e){}
+})();
+
+const CLOUD_CONFIG = {
+  owner: 'siyahprens00011',
+  repo: 'nobet-veriler-gizli',
+  defaultToken: ''
+};
+
+function getCloudToken(){
+  let t = localStorage.getItem('nobet_gh_token');
+  if(!t && CLOUD_CONFIG.defaultToken) {
+    t = CLOUD_CONFIG.defaultToken;
+    localStorage.setItem('nobet_gh_token', t);
+  }
+  return t;
+}
+
+function showToast(text, isError = false){
+  const tb = document.getElementById('toastBox');
+  const tt = document.getElementById('toastText');
+  const ti = document.getElementById('toastIcon');
+  if(!tb) return;
+  tt.textContent = text;
+  ti.textContent = isError ? '❌' : '✅';
+  tb.className = 'toast-msg' + (isError ? ' error' : '');
+  setTimeout(() => { tb.classList.add('hidden'); }, 3500);
+}
+
+function setCloudStatus(durum, text, detail = ''){
+  const dot = document.getElementById('cloudDot');
+  const stText = document.getElementById('cloudStatusText');
+  const syncWrap = document.getElementById('cloudStatusWrap');
+  const lastTime = document.getElementById('cloudLastSyncTime');
+  if(!dot || !stText) return;
+  
+  syncWrap.className = 'cloud-status ' + durum;
+  stText.textContent = text;
+  if(detail) lastTime.textContent = '· ' + detail;
+}
+
+function updateActivePersonelBadge(){
+  const b = document.getElementById('cloudActivePersonel');
+  const curName = document.getElementById('personelAdi') ? document.getElementById('personelAdi').value.trim() : '';
+  if(b) b.textContent = curName || 'Personel Seçilmedi';
+}
+
+async function githubApi(endpoint, method = 'GET', body = null){
+  const token = getCloudToken();
+  if(!token) throw new Error('GitHub Token bulunamadı. Lütfen Ayarlar kısmından token girin.');
+  
+  const headers = {
+    'Authorization': 'token ' + token,
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'Nobet-Takip-Client'
+  };
+  
+  const opt = { method, headers, cache: 'no-store' };
+  if(body) opt.body = JSON.stringify(body);
+  
+  const res = await fetch(`https://api.github.com/repos/${CLOUD_CONFIG.owner}/${CLOUD_CONFIG.repo}/${endpoint}`, opt);
+  if(res.status === 404 && method === 'GET') return null;
+  if(!res.ok){
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err.message || `GitHub Hatası: ${res.status}`);
+  }
+  return await res.json();
+}
+
+// UTF-8 güvenli base64 encode/decode
+function b64EncodeUnicode(str) {
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+    return String.fromCharCode('0x' + p1);
+  }));
+}
+function b64DecodeUnicode(str) {
+  return decodeURIComponent(atob(str).split('').map(function(c) {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join(''));
+}
+
+async function cloudManifestAl(){
+  const data = await githubApi('contents/manifest.json');
+  if(!data || !data.content) return [];
+  const jsonStr = b64DecodeUnicode(data.content.replace(/\n/g, ''));
+  return JSON.parse(jsonStr);
+}
+
+async function cloudManifestKaydet(manifestList){
+  const cur = await githubApi('contents/manifest.json');
+  const sha = cur ? cur.sha : null;
+  const contentStr = JSON.stringify(manifestList, null, 2);
+  const payload = {
+    message: 'Manifest güncelleme',
+    content: b64EncodeUnicode(contentStr)
+  };
+  if(sha) payload.sha = sha;
+  await githubApi('contents/manifest.json', 'PUT', payload);
+}
+
+function personelToSlug(name){
+  return name.trim().toLowerCase()
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+}
+
+async function cloudPersonelModalAc(){
+  const modal = document.getElementById('cloudPersonelModal');
+  const listDiv = document.getElementById('cloudPersonelListesi');
+  modal.classList.remove('hidden');
+  listDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;">Buluttaki personeller taranıyor...</div>';
+  
+  try {
+    const manifest = await cloudManifestAl();
+    if(manifest.length === 0){
+      listDiv.innerHTML = '<div style="padding:15px; color:#64748b;">Henüz kayıtlı personel yok. Aşağıdan ekleyin.</div>';
+      return;
+    }
+    
+    const curPersonel = document.getElementById('personelAdi').value.trim();
+    let html = '';
+    for(const p of manifest){
+      const dt = p.sonGuncelleme ? new Date(p.sonGuncelleme).toLocaleString('tr-TR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'Bilinmiyor';
+      const isAktif = (curPersonel && (curPersonel.toLowerCase() === p.isim.toLowerCase()));
+      html += `
+        <div class="personel-card ${isAktif ? 'active' : ''}" onclick="cloudPersonelSec('${p.id}')">
+          <div>
+            <div style="font-weight:bold; font-size:14px; color:var(--navy);">👤 ${p.isim}</div>
+            <div style="font-size:11px; color:#64748b; margin-top:2px;">${p.sube || 'Birim belirtilmemiş'} · Son Yedek: <b>${dt}</b></div>
+          </div>
+          <button style="padding:5px 10px; font-size:12px; background:${isAktif ? '#15803d' : 'var(--navy)'};">
+            ${isAktif ? '✓ Yüklü' : 'Yedek Getir'}
+          </button>
+        </div>
+      `;
+    }
+    listDiv.innerHTML = html;
+  } catch(e) {
+    listDiv.innerHTML = `<div style="color:#ef4444; padding:15px;">Yedekler çekilemedi: ${e.message}</div>`;
+  }
+}
+
+async function cloudPersonelSec(personelId){
+  setCloudStatus('syncing', 'Yedek İndiriliyor...');
+  try {
+    const manifest = await cloudManifestAl();
+    const target = manifest.find(m => m.id === personelId);
+    if(!target) throw new Error('Personel bulunamadı.');
+    
+    const fileRes = await githubApi(`contents/${target.dosya}`);
+    if(!fileRes || !fileRes.content) throw new Error('Yedek dosyası boş veya bulunamadı.');
+    
+    const jsonStr = b64DecodeUnicode(fileRes.content.replace(/\n/g, ''));
+    const payload = JSON.parse(jsonStr);
+    
+    if(payload && Array.isArray(payload.kayitlar)){
+      kayitlar = kayitlariDuzenle(payload.kayitlar);
+      if(payload.settings){
+        localStorage.setItem(settingsKey(), JSON.stringify(payload.settings));
+        if(payload.settings.personel) document.getElementById('personelAdi').value = payload.settings.personel;
+        if(payload.settings.sube) document.getElementById('personelSube').value = payload.settings.sube;
+        if(payload.settings.notlar) document.getElementById('kisiselNotlar').value = payload.settings.notlar;
+      }
+      kaydet();
+      render();
+      bekleyenleriKontrolEt();
+      
+      localStorage.setItem('nobet_aktif_personel_id', personelId);
+      localStorage.setItem('nobet_son_sync_tarih', target.sonGuncelleme || new Date().toISOString());
+      
+      document.getElementById('cloudPersonelModal').classList.add('hidden');
+      updateActivePersonelBadge();
+      const dtStr = new Date(target.sonGuncelleme || Date.now()).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+      setCloudStatus('online', 'Bulut Güncel', dtStr);
+      showToast(`${target.isim} yedeği başarıyla yüklendi!`);
+    }
+  } catch(e) {
+    setCloudStatus('offline', 'İndirme Hatası');
+    showToast('Hata: ' + e.message, true);
+  }
+}
+
+async function cloudYeniPersonelEkle(){
+  const inp = document.getElementById('yeniPersonelAdi');
+  const isim = inp.value.trim();
+  if(!isim) return alert('Lütfen personel adı soyadı girin.');
+  
+  const id = personelToSlug(isim);
+  try {
+    let manifest = await cloudManifestAl();
+    if(manifest.some(m => m.id === id)){
+      return alert('Bu isimde bir personel zaten mevcut!');
+    }
+    
+    const dosya = `yedekler/${id}.json`;
+    const nowIso = new Date().toISOString();
+    const yeniData = {
+      versiyon: 3,
+      yedeklemeTarihi: nowIso,
+      settings: { personel: isim, sube: '', notlar: '' },
+      kayitlar: []
+    };
+    
+    // Dosyayi repoya yukle
+    await githubApi(`contents/${dosya}`, 'PUT', {
+      message: `${isim} için yeni profil`,
+      content: b64EncodeUnicode(JSON.stringify(yeniData, null, 2))
+    });
+    
+    manifest.push({
+      id: id,
+      isim: isim,
+      sube: '',
+      dosya: dosya,
+      sonGuncelleme: nowIso
+    });
+    await cloudManifestKaydet(manifest);
+    
+    inp.value = '';
+    cloudPersonelModalAc();
+    showToast(`${isim} profili oluşturuldu!`);
+  } catch(e) {
+    alert('Hata: ' + e.message);
+  }
+}
+
+async function cloudBulutaKaydetManuel(){
+  const perAdi = document.getElementById('personelAdi').value.trim();
+  if(!perAdi) return alert('Lütfen önce bir personel adı girin veya Personel Seçin.');
+  
+  setCloudStatus('syncing', 'Buluta Kaydediliyor...');
+  try {
+    const id = localStorage.getItem('nobet_aktif_personel_id') || personelToSlug(perAdi);
+    const dosya = `yedekler/${id}.json`;
+    const nowIso = new Date().toISOString();
+    
+    const settings = {
+      personel: perAdi,
+      sube: document.getElementById('personelSube').value.trim(),
+      notlar: document.getElementById('kisiselNotlar').value.trim()
+    };
+    
+    const payload = {
+      versiyon: 3,
+      yedeklemeTarihi: nowIso,
+      settings: settings,
+      kayitlar: kayitlar
+    };
+    
+    // Eski dosya sha kontrol
+    const cur = await githubApi(`contents/${dosya}`);
+    const sha = cur ? cur.sha : null;
+    
+    const putPayload = {
+      message: `${perAdi} güncel yedek (${nowIso})`,
+      content: b64EncodeUnicode(JSON.stringify(payload, null, 2))
+    };
+    if(sha) putPayload.sha = sha;
+    
+    await githubApi(`contents/${dosya}`, 'PUT', putPayload);
+    
+    // Manifest güncelle
+    let manifest = await cloudManifestAl();
+    const idx = manifest.findIndex(m => m.id === id);
+    if(idx > -1){
+      manifest[idx].sonGuncelleme = nowIso;
+      manifest[idx].sube = settings.sube;
+      manifest[idx].isim = perAdi;
+    } else {
+      manifest.push({
+        id: id,
+        isim: perAdi,
+        sube: settings.sube,
+        dosya: dosya,
+        sonGuncelleme: nowIso
+      });
+    }
+    await cloudManifestKaydet(manifest);
+    
+    localStorage.setItem('nobet_aktif_personel_id', id);
+    localStorage.setItem('nobet_son_sync_tarih', nowIso);
+    
+    const dtStr = new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+    setCloudStatus('online', 'Buluta Kaydedildi', dtStr);
+    showToast('Buluta başarıyla kaydedildi! ✅');
+  } catch(e) {
+    setCloudStatus('offline', 'Kayıt Hatası');
+    showToast('Kayıt Başarısız: ' + e.message, true);
+  }
+}
+
+async function cloudBuluttanCekAktif(){
+  const id = localStorage.getItem('nobet_aktif_personel_id');
+  if(!id) return cloudPersonelModalAc();
+  cloudPersonelSec(id);
+}
+
+// Otomasyon verisini buluta gönder
+async function cloudOtomasyonVerisiYukle(cizelge){
+  try {
+    const cur = await githubApi('contents/otomasyon/son_cizelge.json');
+    const sha = cur ? cur.sha : null;
+    const body = {
+      message: 'Otomasyon için yeni çizelge',
+      content: b64EncodeUnicode(JSON.stringify(cizelge, null, 2))
+    };
+    if(sha) body.sha = sha;
+    await githubApi('contents/otomasyon/son_cizelge.json', 'PUT', body);
+    showToast('Otomasyon verisi buluta da aktarıldı! 🤖');
+  } catch(e) {
+    console.error('Otomasyon verisi buluta aktarılamadı:', e);
+  }
+}
+
+let pendingNoticeTarget = null;
+function cloudUpdateNoticeKabul(){
+  document.getElementById('cloudUpdateNoticeModal').classList.add('hidden');
+  if(pendingNoticeTarget){
+    cloudPersonelSec(pendingNoticeTarget.id);
+  }
+}
+
+async function cloudBaslangicKontrol(){
+  const token = getCloudToken();
+  if(!token) {
+    setCloudStatus('offline', 'Token Gerekli');
+    return;
+  }
+  
+  updateActivePersonelBadge();
+  setCloudStatus('syncing', 'Bulut Kontrol Ediliyor...');
+  
+  try {
+    const manifest = await cloudManifestAl();
+    const curName = document.getElementById('personelAdi').value.trim();
+    let aktifId = localStorage.getItem('nobet_aktif_personel_id');
+    
+    if(!aktifId && curName){
+      aktifId = personelToSlug(curName);
+    }
+    
+    if(aktifId){
+      const hedef = manifest.find(m => m.id === aktifId);
+      if(hedef && hedef.sonGuncelleme){
+        const yerelSon = localStorage.getItem('nobet_son_sync_tarih');
+        const bulutZaman = new Date(hedef.sonGuncelleme).getTime();
+        const yerelZaman = yerelSon ? new Date(yerelSon).getTime() : 0;
+        
+        // Eğer buluttaki veri 60 saniyeden daha yeniyse uyar
+        if(bulutZaman > yerelZaman + 60000){
+          pendingNoticeTarget = hedef;
+          const dtBulut = new Date(hedef.sonGuncelleme).toLocaleString('tr-TR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+          document.getElementById('cloudUpdateNoticeText').innerHTML = `
+            <b>${hedef.isim}</b> için başka bir cihazda (ev/iş/telefon) daha yeni bir kayıt yapılmış:<br>
+            📅 <b>Son Bulut Yedeği:</b> ${dtBulut}<br><br>
+            En güncel yedek yüklensin mi?
+          `;
+          document.getElementById('cloudUpdateNoticeModal').classList.remove('hidden');
+        }
+      }
+      updateActivePersonelBadge();
+      setCloudStatus('online', 'Bulut Bağlı');
+    } else {
+      // Personel seçilmemişse modalı aç
+      setCloudStatus('online', 'Personel Bekleniyor');
+      if(manifest.length > 0){
+        setTimeout(cloudPersonelModalAc, 600);
+      }
+    }
+  } catch(e) {
+    setCloudStatus('offline', 'Bağlantı Kurulamadı');
+  }
+}
+
+function cloudAyarModalAc(){
+  document.getElementById('cfgGithubToken').value = getCloudToken() || '';
+  document.getElementById('cloudAyarModal').classList.remove('hidden');
+}
+
+function cloudAyarlariKaydet(){
+  const t = document.getElementById('cfgGithubToken').value.trim();
+  if(!t) return alert('Lütfen token girin.');
+  localStorage.setItem('nobet_gh_token', t);
+  document.getElementById('cloudAyarModal').classList.add('hidden');
+  showToast('Ayarlar kaydedildi!');
+  cloudBaslangicKontrol();
+}
+
+async function cloudBaglantiTestEt(){
+  const t = document.getElementById('cfgGithubToken').value.trim();
+  if(!t) return alert('Lütfen token girin.');
+  try {
+    const res = await fetch(`https://api.github.com/repos/${CLOUD_CONFIG.owner}/${CLOUD_CONFIG.repo}`, {
+      headers: { 'Authorization': 'token ' + t, 'User-Agent': 'Test' }
+    });
+    if(res.ok) alert('✅ Bağlantı Başarılı! Özel depoya erişildi.');
+    else alert('❌ Bağlantı Başarısız! Token yetkisini kontrol edin.');
+  } catch(e) {
+    alert('Hata: ' + e.message);
+  }
+}
+
+// Otomasyon İndirme fonksiyonunu hook et
+const orig_otomasyonIcinDisaAktar = otomasyonIcinDisaAktar;
+otomasyonIcinDisaAktar = function() {
+  orig_otomasyonIcinDisaAktar.apply(this, arguments);
+  if(typeof finalCizelge !== 'undefined' && finalCizelge.length > 0){
+    cloudOtomasyonVerisiYukle(finalCizelge);
+  }
+};
+
+// Sayfa açıldığında başlat
+setTimeout(cloudBaslangicKontrol, 400);
+
+</script>
+
+<!-- PERSONEL SEÇİM MODALI -->
+<div id="cloudPersonelModal" class="modal-bg hidden">
+  <div class="modal" style="max-width: 500px;">
+    <h3>👥 Personel / Yedek Seçimi</h3>
+    <p>Bulutta kayıtlı personeller listeleniyor. Çalışmak istediğiniz personeli seçin:</p>
+    <div id="cloudPersonelListesi" style="max-height: 280px; overflow-y: auto; margin-bottom: 15px;">
+      <div style="text-align: center; color: #64748b; padding: 20px;">Personeller yükleniyor...</div>
+    </div>
+    <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 10px;">
+      <label style="font-weight: bold; font-size: 12px;">+ Yeni Personel Profili Ekle</label>
+      <div style="display: flex; gap: 8px;">
+        <input id="yeniPersonelAdi" placeholder="Örn: Ahmet Yılmaz" style="margin-bottom: 0;">
+        <button style="white-space: nowrap;" onclick="cloudYeniPersonelEkle()">Ekle</button>
+      </div>
+    </div>
+    <div class="btns" style="margin-top: 15px;">
+      <button class="secondary" onclick="document.getElementById('cloudPersonelModal').classList.add('hidden')">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<!-- YENİ BULUT YEDEĞİ TESPİT EDİLDİ MODALI -->
+<div id="cloudUpdateNoticeModal" class="modal-bg hidden">
+  <div class="modal" style="max-width: 480px;">
+    <h3 style="color:#b45309;">⚠️ Yeni Bulut Yedeği Bulundu!</h3>
+    <p id="cloudUpdateNoticeText">Evde veya telefonda daha yeni bir izin kaydı yapılmış. Güncel verileri şimdi yüklemek ister misiniz?</p>
+    <div class="btns">
+      <button class="secondary" onclick="document.getElementById('cloudUpdateNoticeModal').classList.add('hidden')">Hayır, Yerelde Kal</button>
+      <button style="background:var(--ok-b);" onclick="cloudUpdateNoticeKabul()">Evet, En Güncel Yedeği Yükle</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULUT AYARLARI MODALI -->
+<div id="cloudAyarModal" class="modal-bg hidden">
+  <div class="modal" style="max-width: 480px;">
+    <h3>⚙️ Bulut Senkronizasyon Ayarları</h3>
+    <p style="font-size:12px; color:#64748b;">
+      Verileriniz <b>siyahprens00011/nobet-veriler-gizli</b> özel (Private) deposunda tamamen gizli ve şifreli saklanır.
+    </p>
+    <div>
+      <label>GitHub Erişim Token (PAT):</label>
+      <input type="password" id="cfgGithubToken" placeholder="ghp_..." style="font-family:monospace;">
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+      <span style="font-size:11px; color:#15803d;">🔒 Yetkili Özel Depo Bağlantısı</span>
+      <button class="secondary" style="font-size:11px; padding:4px 8px;" onclick="cloudBaglantiTestEt()">Bağlantıyı Test Et</button>
+    </div>
+    <div class="btns" style="margin-top: 15px;">
+      <button class="secondary" onclick="document.getElementById('cloudAyarModal').classList.add('hidden')">İptal</button>
+      <button onclick="cloudAyarlariKaydet()">Kaydet ve Bağlan</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST BİLDİRİMİ -->
+<div id="toastBox" class="toast-msg hidden">
+  <span id="toastIcon">✅</span>
+  <span id="toastText">İşlem tamamlandı</span>
+</div>
+
+</body>
+</html>
