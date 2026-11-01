@@ -221,6 +221,7 @@
       <span style="font-size:11px; color:#94a3b8;" id="cloudLastSyncTime"></span>
     </div>
     <div class="cloud-actions">
+      <button id="btnBekleyenRozet" class="secondary hidden" style="background:#f59e0b; color:#000; font-weight:bold; border:none;" onclick="bekleyenleriKontrolEt(true)">⏳ Onay Bekleyenler (<span id="bekleyenAdet">0</span>)</button>
       <button class="secondary" style="background:#334155; color:#fff; border:none;" onclick="cloudPersonelModalAc()">👤 Personel Değiştir</button>
       <button style="background:#16a34a; color:#fff;" onclick="cloudBulutaKaydetManuel()">☁️ Buluta Kaydet</button>
       <button class="secondary" style="background:#0284c7; color:#fff; border:none;" onclick="cloudBuluttanCekAktif()">🔄 Buluttan Çek</button>
@@ -272,7 +273,7 @@
       <div class="val" id="toplamSaat">0 saat</div>
     </div>
     <div class="box">
-      <div class="lbl">Onay Bekleyen Süre</div>
+      <div class="lbl" style="cursor:pointer;" onclick="bekleyenleriKontrolEt(true)">Onay Bekleyen Süre 🔍</div>
       <div class="val" id="bekleyenSaat" style="color:var(--wait-b)">0 saat</div>
     </div>
   </div>
@@ -541,7 +542,22 @@ document.getElementById('ekSorusturma').addEventListener('input', function(e) {
   e.target.value = val;
 });
 
-function bekleyenleriKontrolEt(){
+function updateBekleyenRozet(){
+  const bekleyenler = kayitlar.filter(k => k.durum === 'beklemede');
+  const btn = document.getElementById('btnBekleyenRozet');
+  const adetSpan = document.getElementById('bekleyenAdet');
+  if(btn && adetSpan){
+    if(bekleyenler.length > 0){
+      btn.classList.remove('hidden');
+      adetSpan.textContent = bekleyenler.length;
+    } else {
+      btn.classList.add('hidden');
+    }
+  }
+}
+
+function bekleyenleriKontrolEt(zorlaAc = false){
+  updateBekleyenRozet();
   const bekleyenler = kayitlar.filter(k => k.durum === 'beklemede');
   if(bekleyenler.length > 0){
     const modal = document.getElementById('startupModal');
@@ -556,6 +572,8 @@ function bekleyenleriKontrolEt(){
       </div>
     `).join('');
     modal.classList.remove('hidden');
+  } else if(zorlaAc){
+    alert('Şu anda sistemde onay bekleyen izin kaydınız bulunmuyor.');
   }
 }
 
@@ -564,15 +582,20 @@ function bekleyenKarar(id, karar){
   if(idx > -1) {
     if(karar === 'onaylandi'){
       kayitlar[idx].durum = 'silinmis';
+      showToast('Kayıt Onaylandı olarak işaretlendi.');
     } else if(karar === 'iptal'){
       kayitlar[idx].durum = 'musait';
+      showToast('Kayıt tekrar Müsait listeye alındı.');
     }
   }
   kaydet(); render();
-  document.getElementById(`wait-item-${id}`).style.display = 'none';
+  const el = document.getElementById(`wait-item-${id}`);
+  if(el) el.style.display = 'none';
   if(kayitlar.filter(k => k.durum === 'beklemede').length === 0){
     document.getElementById('startupModal').classList.add('hidden');
   }
+  // Buluta anında kaydet
+  if (typeof cloudBulutaKaydetSessiz === 'function') cloudBulutaKaydetSessiz();
 }
 
 function dosyaAdinaUygun(text){ return String(text || '').trim().replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''); }
@@ -889,6 +912,7 @@ function render(){
   
   document.getElementById('toplamSaat').textContent = formatSaat(musaitK.reduce((s,k)=>s+k.saat,0));
   document.getElementById('bekleyenSaat').textContent = formatSaat(bekleK.reduce((s,k)=>s+k.saat,0));
+  if(typeof updateBekleyenRozet === 'function') updateBekleyenRozet();
 }
 
 function altUstKombinasyon(hedefSaat){
@@ -1102,11 +1126,15 @@ function pdfModalKarar(karar){
 
   if (karar === 'sil'){
     kayitlar.forEach(k => { if(secIdler.has(k.id)) k.durum = 'silinmis'; });
+    showToast('Kayıtlar silinenlere taşındı.');
   } else if (karar === 'bekle'){
     kayitlar.forEach(k => { if(secIdler.has(k.id)) k.durum = 'beklemede'; });
+    showToast('Kayıtlar Onay Beklemede durumuna alındı! ⏳');
   }
 
   kaydet(); render();
+  // ANINDA BULUTA EŞİTLE (Böylece telefonda ve diğer cihazlarda hemen görünür)
+  if (typeof cloudBulutaKaydetSessiz === 'function') cloudBulutaKaydetSessiz();
   document.getElementById('sonucAlan').classList.add('hidden');
   document.getElementById('istenenSaat').value='';
   finalSecilenler=[]; finalToplam=0; sonSecim=null; finalCizelge=[];
@@ -1442,6 +1470,77 @@ async function cloudYeniPersonelEkle(){
   } catch(e) {
     alert('Hata: ' + e.message);
   }
+}
+
+
+// Otomatik Sessiz Bulut Kaydı (Beklemede / Silindi / Eklendi durumlarında anında senkronize eder)
+let syncTimeout = null;
+function cloudBulutaKaydetSessiz() {
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(async () => {
+    const perAdi = document.getElementById('personelAdi') ? document.getElementById('personelAdi').value.trim() : '';
+    const token = getCloudToken();
+    if (!perAdi || !token) return;
+
+    try {
+      setCloudStatus('syncing', 'Buluta Eşitleniyor...');
+      const id = localStorage.getItem('nobet_aktif_personel_id') || personelToSlug(perAdi);
+      const dosya = `yedekler/${id}.json`;
+      const nowIso = new Date().toISOString();
+
+      const settings = {
+        personel: perAdi,
+        sube: document.getElementById('personelSube').value.trim(),
+        notlar: document.getElementById('kisiselNotlar').value.trim()
+      };
+
+      const payload = {
+        versiyon: 3,
+        yedeklemeTarihi: nowIso,
+        settings: settings,
+        kayitlar: kayitlar
+      };
+
+      const cur = await githubApi(`contents/${dosya}`);
+      const sha = cur ? cur.sha : null;
+
+      const putPayload = {
+        message: `${perAdi} otomatik durum güncelleme (${nowIso})`,
+        content: b64EncodeUnicode(JSON.stringify(payload, null, 2))
+      };
+      if (sha) putPayload.sha = sha;
+
+      await githubApi(`contents/${dosya}`, 'PUT', putPayload);
+
+      // Manifest güncelle
+      let manifest = await cloudManifestAl();
+      const idx = manifest.findIndex(m => m.id === id);
+      if (idx > -1) {
+        manifest[idx].sonGuncelleme = nowIso;
+        manifest[idx].sube = settings.sube;
+        manifest[idx].isim = perAdi;
+      } else {
+        manifest.push({
+          id: id,
+          isim: perAdi,
+          sube: settings.sube,
+          dosya: dosya,
+          sonGuncelleme: nowIso
+        });
+      }
+      await cloudManifestKaydet(manifest);
+
+      localStorage.setItem('nobet_aktif_personel_id', id);
+      localStorage.setItem('nobet_son_sync_tarih', nowIso);
+
+      const dtStr = new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
+      setCloudStatus('online', 'Bulut Güncel', dtStr);
+      showToast('Durum buluta da eşitlendi! ☁️');
+      updateBekleyenRozet();
+    } catch (e) {
+      console.warn('Sessiz bulut senkronizasyonu başarısız:', e);
+    }
+  }, 500);
 }
 
 async function cloudBulutaKaydetManuel(){
