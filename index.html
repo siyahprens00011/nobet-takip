@@ -224,6 +224,7 @@
       <button class="secondary" style="background:#334155; color:#fff; border:none;" onclick="cloudPersonelModalAc()">👤 Personel Değiştir</button>
       <button style="background:#16a34a; color:#fff;" onclick="cloudBulutaKaydetManuel()">☁️ Buluta Kaydet</button>
       <button class="secondary" style="background:#0284c7; color:#fff; border:none;" onclick="cloudBuluttanCekAktif()">🔄 Buluttan Çek</button>
+      <button class="secondary" style="background:#6366f1; color:#fff; border:none;" onclick="cloudOtomasyonModalAc()">🤖 Otomasyon Çizelgeleri</button>
       <button class="secondary" style="background:#475569; color:#fff; border:none;" onclick="cloudAyarModalAc()">⚙️ Ayarlar</button>
     </div>
   </div>
@@ -460,6 +461,15 @@
 </div>
 
 <script>
+
+// XSS Koruması (HTML Sanitization)
+function esc(s){
+  if(s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
 let kayitlar = [];
 let sonSecim = null;
 let finalSecilenler = [];
@@ -538,7 +548,7 @@ function bekleyenleriKontrolEt(){
     const listeDiv = document.getElementById('startupList');
     listeDiv.innerHTML = bekleyenler.map(k => `
       <div class="wait-list-item" id="wait-item-${k.id}">
-        <div class="w-info"><b>${k.tur}</b> — ${k.sorusturma}<br><span style="color:#666;font-size:11px;">Tarih: ${k.tarih} · Süre: ${formatSaat(k.saat)}</span></div>
+        <div class="w-info"><b>${esc(k.tur)}</b> — ${esc(k.sorusturma)}<br><span style="color:#666;font-size:11px;">Tarih: ${esc(k.tarih)} · Süre: ${formatSaat(k.saat)}</span></div>
         <div class="w-btns">
           <button class="danger" style="background:var(--ok-b)" onclick="bekleyenKarar('${k.id}', 'onaylandi')">Onaylandı (Silinenlere Taşı)</button>
           <button class="secondary" onclick="bekleyenKarar('${k.id}', 'iptal')">Vazgeçtim (Listeye Al)</button>
@@ -835,8 +845,8 @@ function render(){
 
       liste.innerHTML += `
         <div class="item ${css}">
-          <div class="info"><b>${k.tur}</b> — ${k.sorusturma} ${bdg}
-            <div class="meta">Tarih: ${k.tarih} · SKT: ${k.sonKullanma}</div>
+          <div class="info"><b>${esc(k.tur)}</b> — ${esc(k.sorusturma)} ${bdg}
+            <div class="meta">Tarih: ${esc(k.tarih)} · SKT: ${k.sonKullanma}</div>
             <div style="margin-top:6px; display:flex; gap:6px; align-items:center;">
               <span style="font-size:10px; color:#666;">Saat:</span>
               <input type="time" value="${k.baslama||''}" onchange="guncelleSaat('${k.id}','baslama',this.value)" style="width:75px; padding:2px; font-size:11px; margin:0;">
@@ -861,8 +871,8 @@ function render(){
     [...silinenK].sort((a,b)=>b.tarih.localeCompare(a.tarih)).forEach(k=>{
       silListe.innerHTML += `
         <div class="item" style="background:#f9fafb; border-left-color:#9ca3af;">
-          <div class="info"><s style="color:#6b7280">${k.tur} — ${k.sorusturma}</s>
-            <div class="meta">Tarih: ${k.tarih}</div>
+          <div class="info"><s style="color:#6b7280">${k.tur} — ${esc(k.sorusturma)}</s>
+            <div class="meta">Tarih: ${esc(k.tarih)}</div>
           </div>
           <div class="saat" style="color:#6b7280; text-decoration:line-through;">${formatSaat(k.saat)}</div>
           <div style="display:flex; gap:5px; margin-left:10px;">
@@ -1159,29 +1169,54 @@ belgeleriKontrolEt(false);
 // URL'den tek tıkla token kurulumu (İlk girişte kolaylık için)
 (function checkUrlToken(){
   try {
+    // Hem ?token= hem #token= desteği
     const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
-    if(urlToken){
-      localStorage.setItem('nobet_gh_token', urlToken);
-      window.history.replaceState({}, document.title, window.location.pathname);
+    let t = urlParams.get('token');
+    if(!t && window.location.hash.includes('token=')){
+      const m = window.location.hash.match(/token=([^&]+)/);
+      if(m) t = m[1];
     }
-  } catch(e){}
+    if(t){
+      localStorage.setItem('nobet_gh_token', t.trim());
+      // Adres çubuğunu temizle
+      if(window.history && window.history.replaceState){
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  } catch(e){
+    console.error('URL token alma hatasi:', e);
+  }
 })();
 
 const CLOUD_CONFIG = {
   owner: 'siyahprens00011',
   repo: 'nobet-veriler-gizli',
-  defaultToken: ''
+  
 };
 
 function getCloudToken(){
-  let t = localStorage.getItem('nobet_gh_token');
-  if(!t && CLOUD_CONFIG.defaultToken) {
-    t = CLOUD_CONFIG.defaultToken;
-    localStorage.setItem('nobet_gh_token', t);
-  }
-  return t;
+  const t = localStorage.getItem('nobet_gh_token');
+  return t ? t.trim() : '';
 }
+
+function cloudLoginModalAc(){
+  const modal = document.getElementById('cloudLoginModal');
+  if(modal) modal.classList.remove('hidden');
+}
+
+function cloudLoginKaydet(){
+  const inp = document.getElementById('loginGithubToken');
+  const t = inp ? inp.value.trim() : '';
+  if(!t || !t.startsWith('ghp_') && !t.startsWith('github_pat_')){
+    alert('Lütfen geçerli bir GitHub Token (ghp_... veya github_pat_...) giriniz.');
+    return;
+  }
+  localStorage.setItem('nobet_gh_token', t);
+  document.getElementById('cloudLoginModal').classList.add('hidden');
+  showToast('Token başarıyla kaydedildi! Bağlanılıyor...');
+  cloudBaslangicKontrol();
+}
+
 
 function showToast(text, isError = false){
   const tb = document.getElementById('toastBox');
@@ -1512,7 +1547,8 @@ function cloudUpdateNoticeKabul(){
 async function cloudBaslangicKontrol(){
   const token = getCloudToken();
   if(!token) {
-    setCloudStatus('offline', 'Token Gerekli');
+    setCloudStatus('offline', 'Giriş Yapılmadı');
+    cloudLoginModalAc();
     return;
   }
   
@@ -1654,6 +1690,45 @@ setTimeout(cloudBaslangicKontrol, 400);
     <div class="btns" style="margin-top: 15px;">
       <button class="secondary" onclick="document.getElementById('cloudAyarModal').classList.add('hidden')">İptal</button>
       <button onclick="cloudAyarlariKaydet()">Kaydet ve Bağlan</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- İLK GİRİŞ / TOKEN GİRİŞİ MODALI (İPHONE VE PWA İÇİN) -->
+<div id="cloudLoginModal" class="modal-bg hidden">
+  <div class="modal" style="max-width: 480px; text-align: center;">
+    <div style="font-size: 36px; margin-bottom: 8px;">☁️</div>
+    <h3 style="margin-bottom: 6px;">Bulut Senkronizasyon Girişi</h3>
+    <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+      Verilerinize evden, işten ve iPhone'unuzdan güvenle erişebilmek için GitHub Erişim Token'ınızı girin:
+    </p>
+    <div style="text-align: left; margin-bottom: 12px;">
+      <label style="font-weight: bold; font-size: 12px;">GitHub Token (PAT):</label>
+      <input type="password" id="loginGithubToken" placeholder="ghp_..." style="font-family: monospace; margin-bottom: 4px;">
+      <span style="font-size: 11px; color: #64748b;">Token sadece bu cihazın tarayıcı hafızasında saklanır, asla dışarı sızmaz.</span>
+    </div>
+    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 15px;">
+      <button style="background: var(--navy); width: 100%; padding: 10px;" onclick="cloudLoginKaydet()">🔒 Giriş Yap ve Cihazımda Hatırla</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULUTTAKİ OTOMASYON ÇİZELGELERİ LİSTESİ MODALI -->
+<div id="cloudOtomasyonModal" class="modal-bg hidden">
+  <div class="modal" style="max-width: 620px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:12px;">
+      <h3 style="margin:0; border:none; padding:0;">🤖 Buluttaki Otomasyon Çizelgeleri</h3>
+      <button class="secondary" style="font-size:11px; padding:3px 8px;" onclick="cloudOtomasyonListesiYukle()">🔄 Yenile</button>
+    </div>
+    <p style="font-size:12px; color:#64748b; margin-bottom:12px;">
+      Buradaki çizelgeler web arayüzünden "Otomasyon İçin Dışa Aktar" dediğinizde masaüstü <b>Otomasyon.exe</b> için buluta gönderilen dosyalardır. Dilediğinizi inceleyebilir veya silebilirsiniz.
+    </p>
+    <div id="cloudOtomasyonListesi" style="max-height:320px; overflow-y:auto; margin-bottom:15px;">
+      <div style="text-align:center; padding:20px; color:#64748b;">Çizelgeler taranıyor...</div>
+    </div>
+    <div class="btns">
+      <button class="secondary" onclick="document.getElementById('cloudOtomasyonModal').classList.add('hidden')">Kapat</button>
     </div>
   </div>
 </div>
