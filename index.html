@@ -340,7 +340,10 @@
     <div class="panel">
       <div class="listhead">
         <h2>Mevcut Kayıtlar</h2>
-        <button class="danger" onclick="gecmisleriSil()">Süresi Geçenleri Sil</button>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="secondary" onclick="cakismaTara()">⏱ Saat Çakışmalarını Kontrol Et</button>
+          <button class="danger" onclick="gecmisleriSil()">Süresi Geçenleri Sil</button>
+        </div>
       </div>
       <div class="legend">
         <span><span class="dot" style="background:var(--ok-b)"></span>Müsait</span>
@@ -415,6 +418,14 @@
       <button class="success" onclick="pdfModalKarar('bekle')">Onaya Gönderdim (Beklet)</button>
       <button class="danger" onclick="pdfModalKarar('sil')">Listeden Sil</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="cakismaModal">
+  <div class="modal">
+    <h3>Saat Çakışması</h3>
+    <div id="cakismaIcerik" style="text-align:left; font-size:13px; max-height:50vh; overflow:auto; margin-bottom:14px;"></div>
+    <div class="btns" id="cakismaBtns" style="justify-content:center; gap:12px;"></div>
   </div>
 </div>
 
@@ -729,7 +740,8 @@ function calculateWorkingHours(sStr, eStr) {
   const toMin = t => { if(!t) return 0; const [h, m] = t.split(':').map(Number); return h*60+m; };
   const s = Math.max(toMin(sStr), 510), e = Math.min(toMin(eStr), 1050);
   if (e <= s) return 0;
-  return (e - s) / 60;
+  const ogle = Math.max(0, Math.min(e, 810) - Math.max(s, 750));
+  return (e - s - ogle) / 60;
 }
 
 function tarihtenSaatHesapla(){
@@ -785,12 +797,36 @@ function kayitEkle(){
   if (!tar) return alert('Tarih giriniz.');
   if (!saat || saat<=0) return alert('Geçerli bir saat giriniz.');
 
-  kayitlar.push({
+  const yeniK = {
     id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
     tur, sorusturma:sor, tarih:tar, saat,
     baslama: baslama, bitis: bitis, belgeAdi: seciliBelgeAdi,
     sonKullanma: sonKullanmaHesapla(tar), durum: 'musait'
-  });
+  };
+
+  if (cakismaUygunMu(yeniK)) {
+    const grup = kayitlar.filter(k => cakismaUygunMu(k) && k.tarih === tar);
+    if (grup.length) {
+      const p = cakismaPlanla([...grup, yeniK]);
+      if (p.some(x => x.bas !== x.eb || x.bit !== x.ebit || x.sigmadi)) {
+        cakismaModalGoster(
+          'Bu tarihte saatleri çakışan nöbet var. Saatler birbirinin içine geçmeyecek şekilde uyarlansın mı?<br><br>' + cakismaOnizleme([{ t: tar, p }]),
+          [
+            { t: 'Uyarla ve Ekle', cls: 'success', fn: () => kayitEkleBitir(yeniK, p) },
+            { t: 'Uyarlamadan Ekle', cls: 'secondary', fn: () => kayitEkleBitir(yeniK, null) },
+            { t: 'Vazgeç', cls: 'danger', fn: null }
+          ]
+        );
+        return;
+      }
+    }
+  }
+  kayitEkleBitir(yeniK, null);
+}
+
+function kayitEkleBitir(yeniK, plan){
+  if (plan) cakismaPlanUygula(plan);
+  kayitlar.push(yeniK);
   kaydet();
   
   document.getElementById('ekSorusturma').value=''; 
@@ -806,6 +842,87 @@ function kayitEkle(){
   btnBelge.className = "danger";
   
   updateSaatField(); render();
+}
+
+const _dk = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const _hm = d => String(Math.floor(d / 60)).padStart(2, '0') + ':' + String(d % 60).padStart(2, '0');
+const _e = x => String(x == null ? '' : x).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const _trTarih = t => { const [y, m, d] = t.split('-'); return `${d}.${m}.${y}`; };
+
+function cakismaUygunMu(k){
+  return (k.durum || 'musait') === 'musait' && k.tur !== 'Fazla Mesai' && k.baslama && k.bitis && _dk(k.bitis) > _dk(k.baslama);
+}
+
+function cakismaPlanla(liste){
+  const o = liste.map((k, i) => ({ k, i, eb: _dk(k.baslama), ebit: _dk(k.bitis), bas: _dk(k.baslama), bit: _dk(k.bitis), sabit: false, sigmadi: false }));
+  for (let guard = 0; guard < 1000; guard++){
+    const a = o.filter(x => !x.sabit).sort((x, y) => x.bas - y.bas || x.bit - y.bit || x.i - y.i);
+    let bulundu = false;
+    for (let j = 0; j < a.length - 1; j++){
+      const c = a[j], n = a[j + 1];
+      if (n.bas < c.bit){
+        bulundu = true;
+        if (n.bas > c.bas) c.bit = n.bas;
+        else if (n.bit <= c.bit){
+          const mid = c.bas + Math.floor((c.bit - c.bas) / 2);
+          if (mid > c.bas && mid < c.bit){ c.bit = mid; n.bas = mid; }
+          else { n.sabit = true; n.sigmadi = true; }
+        }
+        else n.bas = c.bit;
+        break;
+      }
+    }
+    if (!bulundu) break;
+  }
+  return o;
+}
+
+function cakismaPlanUygula(p){
+  p.forEach(x => { if (!x.sigmadi){ x.k.baslama = _hm(x.bas); x.k.bitis = _hm(x.bit); } });
+}
+
+function cakismaOnizleme(sonuclar){
+  return sonuclar.map(({ t, p }) => {
+    const satirlar = p.slice().sort((a, b) => a.eb - b.eb || a.i - b.i).map(x => {
+      const eski = `${_hm(x.eb)}-${_hm(x.ebit)}`, yeni = `${_hm(x.bas)}-${_hm(x.bit)}`;
+      const ad = `${_e(x.k.tur)} ${_e(x.k.sorusturma)}`;
+      if (x.sigmadi) return `<div>${ad}: ${eski} <span style="color:#b91c1c">→ tamamen aynı saat, ayarlanamadı</span></div>`;
+      return eski === yeni ? `<div>${ad}: ${eski}</div>` : `<div>${ad}: ${eski} → <b>${yeni}</b></div>`;
+    }).join('');
+    return `<div style="margin-bottom:10px"><b>${_trTarih(t)}</b>${satirlar}</div>`;
+  }).join('');
+}
+
+function cakismaModalGoster(html, butonlar){
+  document.getElementById('cakismaIcerik').innerHTML = html;
+  const b = document.getElementById('cakismaBtns');
+  b.innerHTML = '';
+  butonlar.forEach(x => {
+    const el = document.createElement('button');
+    el.className = x.cls; el.textContent = x.t;
+    el.onclick = () => { document.getElementById('cakismaModal').classList.add('hidden'); if (x.fn) x.fn(); };
+    b.appendChild(el);
+  });
+  document.getElementById('cakismaModal').classList.remove('hidden');
+}
+
+function cakismaTara(){
+  const gruplar = {};
+  kayitlar.filter(cakismaUygunMu).forEach(k => { (gruplar[k.tarih] = gruplar[k.tarih] || []).push(k); });
+  const sonuclar = [];
+  Object.keys(gruplar).sort().forEach(t => {
+    if (gruplar[t].length < 2) return;
+    const p = cakismaPlanla(gruplar[t]);
+    if (p.some(x => x.bas !== x.eb || x.bit !== x.ebit || x.sigmadi)) sonuclar.push({ t, p });
+  });
+  if (!sonuclar.length){ showToast('Saatleri çakışan nöbet yok.'); return; }
+  cakismaModalGoster(
+    'Aşağıdaki günlerde nöbet saatleri çakışıyor. Saatler birbirinin içine geçmeyecek şekilde uyarlansın mı?<br><br>' + cakismaOnizleme(sonuclar),
+    [
+      { t: 'Hepsini Uyarla', cls: 'success', fn: () => { sonuclar.forEach(r => cakismaPlanUygula(r.p)); kaydet(); render(); showToast('Saatler uyarlandı.'); } },
+      { t: 'Kapat', cls: 'secondary', fn: null }
+    ]
+  );
 }
 
 function kayitSil(id){
@@ -1010,24 +1127,35 @@ function cizelgeOlustur(secilenler){
     return { tarih:t, bas, bit, pen, kul:[] };
   });
 
+  const norm = x => (x >= 750 && x < 810) ? 810 : x;
+  const duvarBitis = (st, need) => {
+    st = norm(st);
+    if (st >= 810) return st + need;
+    const avail = 750 - st;
+    return need <= avail ? st + need : 810 + (need - avail);
+  };
+  const calisDk = (a, b) => (b - a) - Math.max(0, Math.min(b, 810) - Math.max(a, 750));
+
   const bosBul = (g, need) => {
     const kul = [...g.kul].sort((x, y) => x[0] - y[0]);
     for (const [wS, wE] of g.pen){
-      let st = wS;
+      let st = norm(wS);
       for (const [us, ue] of kul){
         if (ue <= st) continue;
-        if (us >= st + need) break;
-        st = Math.max(st, ue);
+        if (us >= duvarBitis(st, need)) break;
+        st = norm(Math.max(st, ue));
       }
-      if (st + need <= wE) return st;
+      if (duvarBitis(st, need) <= wE) return st;
     }
     return -1;
   };
 
   const sonuc = [];
   const ekle = (g, st, harc, sec) => {
-    g.kul.push([st, st + harc]);
-    sonuc.push({ g: g.tarih, st, c: { izinTarihi: g.tarih, saatAraligi: `${dakikaToSaat(st)} - ${dakikaToSaat(st + harc)}`, harcanan: harc / 60, vaka: sec } });
+    st = norm(st);
+    const en = duvarBitis(st, harc);
+    g.kul.push([st, en]);
+    sonuc.push({ g: g.tarih, st, c: { izinTarihi: g.tarih, saatAraligi: `${dakikaToSaat(st)} - ${dakikaToSaat(en)}`, harcanan: harc / 60, vaka: sec } });
   };
 
   const sirali = [...secilenler].sort((x, y) => (Number(y.saat) || 0) - (Number(x.saat) || 0));
@@ -1049,7 +1177,8 @@ function cizelgeOlustur(secilenler){
         if (g.bit > cur) bosluk.push([cur, g.bit]);
         for (const [bs, be] of bosluk){
           if (kal <= 0) break;
-          const h = Math.min(kal, be - bs);
+          const h = Math.min(kal, calisDk(bs, be));
+          if (h <= 0) continue;
           ekle(g, bs, h, sec); kal -= h;
         }
         if (kal <= 0) break;
@@ -1485,6 +1614,13 @@ function cloudBulutaKaydetSessiz() {
     try {
       setCloudStatus('syncing', 'Buluta Eşitleniyor...');
       const id = localStorage.getItem('nobet_aktif_personel_id') || personelToSlug(perAdi);
+      const _man = await cloudManifestAl();
+      const _hed = _man.find(m => m.id === id);
+      if (_hed && personelToSlug(_hed.isim || '') !== personelToSlug(perAdi)) {
+        setCloudStatus('offline', 'İsim uyuşmuyor');
+        showToast(`Aktif profil "${_hed.isim}" ama isim alanında "${perAdi}" yazıyor. Otomatik kayıt durduruldu.`, true);
+        return;
+      }
       const dosya = `yedekler/${id}.json`;
       const nowIso = new Date().toISOString();
 
@@ -1553,6 +1689,9 @@ async function cloudBulutaKaydetManuel(){
     const manifest = await cloudManifestAl();
     const hedef = manifest.find(m => m.id === id);
     const yerelSon = localStorage.getItem('nobet_son_sync_tarih');
+    if (hedef && personelToSlug(hedef.isim || '') !== personelToSlug(perAdi)) {
+      if (!confirm(`Aktif profil "${hedef.isim}" ama isim alanında "${perAdi}" yazıyor.\n\n"${hedef.isim}" profilinin üzerine "${perAdi}" adıyla yazılacak. Devam edilsin mi?`)) return;
+    }
     
     if (hedef && hedef.sonGuncelleme && yerelSon) {
       const bulutZaman = new Date(hedef.sonGuncelleme).getTime();
